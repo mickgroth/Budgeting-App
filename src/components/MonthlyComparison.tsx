@@ -190,9 +190,9 @@ export const MonthlyComparison: React.FC<MonthlyComparisonProps> = ({
                       {formatMonthDisplay(archive.month)}
                     </th>
                   ))}
-                  <th className="total-column">Total</th>
-                  <th className="average-column">Average</th>
                   <th className="trend-column">Trend</th>
+                  <th className="average-column">Average</th>
+                  <th className="total-column">Total</th>
                 </tr>
               </thead>
               <tbody>
@@ -212,8 +212,6 @@ export const MonthlyComparison: React.FC<MonthlyComparisonProps> = ({
                           {month.spent > 0 ? formatCurrency(month.spent) : '—'}
                         </td>
                       ))}
-                      <td className="total-cell">{formatCurrency(category.total)}</td>
-                      <td className="average-cell">{formatCurrency(category.average)}</td>
                       <td className="trend-cell">
                         {trend !== null ? (
                           <span className={`trend-indicator ${trend > 0 ? 'trend-up' : trend < 0 ? 'trend-down' : ''}`}>
@@ -223,6 +221,8 @@ export const MonthlyComparison: React.FC<MonthlyComparisonProps> = ({
                           <span className="trend-indicator">—</span>
                         )}
                       </td>
+                      <td className="average-cell">{formatCurrency(category.average)}</td>
+                      <td className="total-cell">{formatCurrency(category.total)}</td>
                     </tr>
                   );
                 })}
@@ -233,8 +233,6 @@ export const MonthlyComparison: React.FC<MonthlyComparisonProps> = ({
                       <strong>{formatCurrency(month.total)}</strong>
                     </td>
                   ))}
-                  <td className="total-cell"><strong>{formatCurrency(grandTotal)}</strong></td>
-                  <td className="average-cell"><strong>{formatCurrency(grandAverage)}</strong></td>
                   <td className="trend-cell">
                     {monthlyTotals.length >= 2 && (() => {
                       const first = monthlyTotals[monthlyTotals.length - 1].total;
@@ -250,6 +248,8 @@ export const MonthlyComparison: React.FC<MonthlyComparisonProps> = ({
                       );
                     })()}
                   </td>
+                  <td className="average-cell"><strong>{formatCurrency(grandAverage)}</strong></td>
+                  <td className="total-cell"><strong>{formatCurrency(grandTotal)}</strong></td>
                 </tr>
               </tbody>
             </table>
