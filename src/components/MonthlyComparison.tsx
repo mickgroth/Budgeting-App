@@ -46,7 +46,10 @@ export const MonthlyComparison: React.FC<MonthlyComparisonProps> = ({
 
   // Get all unique categories across selected months
   const allCategories = new Map<string, { name: string; color: string }>();
-  const selectedArchives = archives.filter(a => selectedMonths.includes(a.month));
+  // Sort selected archives chronologically (oldest to newest) for display
+  const selectedArchives = archives
+    .filter(a => selectedMonths.includes(a.month))
+    .sort((a, b) => a.month.localeCompare(b.month)); // Oldest first
   
   selectedArchives.forEach(archive => {
     archive.categorySnapshots.forEach(cat => {
@@ -92,11 +95,11 @@ export const MonthlyComparison: React.FC<MonthlyComparisonProps> = ({
   const grandTotal = monthlyTotals.reduce((sum, m) => sum + m.total, 0);
   const grandAverage = monthlyTotals.length > 0 ? grandTotal / monthlyTotals.length : 0;
 
-  // Calculate percentage change for each category
+  // Calculate percentage change for each category (from oldest to newest month)
   const getCategoryTrend = (monthlySpending: Array<{ month: string; spent: number }>) => {
     if (monthlySpending.length < 2) return null;
-    const first = monthlySpending[monthlySpending.length - 1].spent;
-    const last = monthlySpending[0].spent;
+    const first = monthlySpending[0].spent; // First (oldest) month
+    const last = monthlySpending[monthlySpending.length - 1].spent; // Last (newest) month
     if (first === 0) return null;
     return ((last - first) / first) * 100;
   };
@@ -235,8 +238,8 @@ export const MonthlyComparison: React.FC<MonthlyComparisonProps> = ({
                   ))}
                   <td className="trend-cell">
                     {monthlyTotals.length >= 2 && (() => {
-                      const first = monthlyTotals[monthlyTotals.length - 1].total;
-                      const last = monthlyTotals[0].total;
+                      const first = monthlyTotals[0].total; // First (oldest) month
+                      const last = monthlyTotals[monthlyTotals.length - 1].total; // Last (newest) month
                       if (first === 0) return <span>—</span>;
                       const totalTrend = ((last - first) / first) * 100;
                       return (
