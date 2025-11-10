@@ -47,14 +47,39 @@ export interface LongTermSavingsGoal {
 }
 
 /**
+ * Snapshot of a category's state in a given month
+ */
+export interface CategorySnapshot {
+  id: string;
+  name: string;
+  allocated: number;
+  spent: number;
+  color: string;
+}
+
+/**
+ * Archived expenses and budget data for a specific month
+ */
+export interface MonthlyArchive {
+  id: string;
+  month: string; // Format: YYYY-MM
+  expenses: Expense[];
+  categorySnapshots: CategorySnapshot[];
+  totalBudget: number;
+  totalSpent: number;
+  archivedDate: string; // ISO date string
+}
+
+/**
  * Represents the overall budget state
  */
 export interface Budget {
   totalBudget: number;
   categories: BudgetCategory[];
-  expenses: Expense[];
+  expenses: Expense[]; // Current month's expenses only
   savings: MonthlySavings[];
   longTermGoals: LongTermSavingsGoal[];
+  monthlyArchives: MonthlyArchive[]; // Historic data
 }
 
 /**

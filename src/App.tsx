@@ -7,12 +7,13 @@ import { AddExpenseScreen } from './components/AddExpenseScreen';
 import { ExpensesList } from './components/ExpensesList';
 import { ImportBudgetExcel } from './components/ImportBudgetExcel';
 import { SavingsTracker } from './components/SavingsTracker';
+import { HistoricExpenses } from './components/HistoricExpenses';
 import { AuthScreen } from './components/AuthScreen';
 import { UserProfile } from './components/UserProfile';
 import { AuthService } from './services/authService';
 import './App.css';
 
-type View = 'budget' | 'add-expense' | 'savings';
+type View = 'budget' | 'add-expense' | 'savings' | 'historic';
 
 /**
  * Main application component for the Budget Tracker
@@ -62,6 +63,8 @@ function App() {
     deleteLongTermGoal,
     reorderLongTermGoal,
     updateLongTermGoalProgress,
+    archiveCurrentMonth,
+    deleteArchive,
     resetBudget,
   } = useBudget(currentUser?.uid || null);
 
@@ -162,6 +165,21 @@ function App() {
     );
   }
 
+  // Render Historic Expenses Screen
+  if (currentView === 'historic') {
+    return (
+      <div className="app">
+        <div className="container">
+          <HistoricExpenses
+            archives={budget.monthlyArchives}
+            onDeleteArchive={deleteArchive}
+            onBack={() => setCurrentView('budget')}
+          />
+        </div>
+      </div>
+    );
+  }
+
   // Show authentication loading state
   if (isAuthLoading) {
     return (
@@ -237,6 +255,30 @@ function App() {
               onClick={handleOpenSavings}
             >
               💰 Savings Tracker
+            </button>
+            <button 
+              className="btn-historic"
+              onClick={() => setCurrentView('historic')}
+            >
+              📊 Historic Data
+            </button>
+            <button 
+              className="btn-archive"
+              onClick={() => {
+                const currentMonth = new Date().toISOString().slice(0, 7);
+                const monthName = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+                if (budget.expenses.length === 0) {
+                  alert('No expenses to archive for this month.');
+                  return;
+                }
+                if (window.confirm(`Archive all expenses for ${monthName} and start fresh?`)) {
+                  archiveCurrentMonth(currentMonth);
+                  alert('✅ Month archived successfully!');
+                }
+              }}
+              disabled={budget.expenses.length === 0}
+            >
+              📦 End of Month
             </button>
           </div>
 

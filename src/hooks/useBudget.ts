@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Budget, BudgetCategory, Expense, MonthlySavings, LongTermSavingsGoal, CATEGORY_COLORS } from '../types/budget';
+import { Budget, BudgetCategory, Expense, MonthlySavings, LongTermSavingsGoal, MonthlyArchive, CATEGORY_COLORS } from '../types/budget';
 import { generateId } from '../utils/budgetHelpers';
 import { FirebaseService } from '../services/firebaseService';
 import { StorageService } from '../services/storageService';
@@ -11,6 +11,7 @@ const defaultBudget: Budget = {
   expenses: [],
   savings: [],
   longTermGoals: [],
+  monthlyArchives: [],
 };
 
 /**
@@ -547,6 +548,67 @@ export const useBudget = (userId: string | null) => {
   };
 
   /**
+   * Archive current month's expenses and reset for new month
+   * Creates a snapshot of categories and expenses before clearing
+   */
+  const archiveCurrentMonth = (monthToArchive?: string) => {
+    setBudget((prev) => {
+      // Use provided month or current month
+      const month = monthToArchive || new Date().toISOString().slice(0, 7); // YYYY-MM
+      
+      // Check if this month is already archived
+      const alreadyArchived = prev.monthlyArchives.some(archive => archive.month === month);
+      if (alreadyArchived) {
+        console.warn(`Month ${month} is already archived`);
+        return prev;
+      }
+      
+      // Create category snapshots with their current spending
+      const categorySnapshots = prev.categories.map(cat => ({
+        id: cat.id,
+        name: cat.name,
+        allocated: cat.allocated,
+        spent: cat.spent,
+        color: cat.color,
+      }));
+      
+      // Calculate total spent
+      const totalSpent = prev.expenses.reduce((sum, exp) => sum + exp.amount, 0);
+      
+      // Create archive
+      const archive: MonthlyArchive = {
+        id: generateId(),
+        month,
+        expenses: [...prev.expenses], // Clone current expenses
+        categorySnapshots,
+        totalBudget: prev.totalBudget,
+        totalSpent,
+        archivedDate: new Date().toISOString(),
+      };
+      
+      // Add archive and clear current expenses, reset category spending
+      return {
+        ...prev,
+        expenses: [], // Clear current expenses
+        categories: prev.categories.map(cat => ({ ...cat, spent: 0 })), // Reset spending
+        monthlyArchives: [...prev.monthlyArchives, archive].sort((a, b) => 
+          b.month.localeCompare(a.month) // Sort newest first
+        ),
+      };
+    });
+  };
+
+  /**
+   * Delete a monthly archive
+   */
+  const deleteArchive = (archiveId: string) => {
+    setBudget((prev) => ({
+      ...prev,
+      monthlyArchives: prev.monthlyArchives.filter(archive => archive.id !== archiveId),
+    }));
+  };
+
+  /**
    * Reset all data
    */
   const resetBudget = () => {
@@ -556,6 +618,7 @@ export const useBudget = (userId: string | null) => {
       expenses: [],
       savings: [],
       longTermGoals: [],
+      monthlyArchives: [],
     });
   };
 
@@ -581,6 +644,8 @@ export const useBudget = (userId: string | null) => {
     deleteLongTermGoal,
     reorderLongTermGoal,
     updateLongTermGoalProgress,
+    archiveCurrentMonth,
+    deleteArchive,
     resetBudget,
   };
 };
