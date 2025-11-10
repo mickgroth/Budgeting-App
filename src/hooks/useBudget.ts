@@ -477,9 +477,17 @@ export const useBudget = (userId: string | null) => {
       const reordered = sorted.map((goal, index) => ({ ...goal, order: index }));
       
       // Re-calculate and re-attribute saved money based on new order
-      const totalAvailableSavings = prev.savings
-        .filter((s) => s.actual > 0)
-        .reduce((sum, s) => sum + s.actual, 0);
+      // Calculate total available savings from all months with expenses
+      const currentMonth = new Date().toISOString().substring(0, 7);
+      const currentMonthExpenses = prev.expenses.reduce((sum, exp) => sum + exp.amount, 0);
+      const currentMonthSavings = Math.max(0, prev.totalBudget - currentMonthExpenses);
+      
+      const archivedSavings = (prev.monthlyArchives || []).reduce((sum, archive) => {
+        const monthSavings = Math.max(0, archive.totalBudget - archive.totalSpent);
+        return sum + monthSavings;
+      }, 0);
+      
+      const totalAvailableSavings = currentMonthSavings + archivedSavings;
       
       let remainingSavings = totalAvailableSavings;
       
@@ -517,10 +525,19 @@ export const useBudget = (userId: string | null) => {
       // Sort goals by order
       const sortedGoals = [...prev.longTermGoals].sort((a, b) => (a.order || 0) - (b.order || 0));
       
-      // Calculate total available savings (sum of all actual monthly savings)
-      const totalAvailableSavings = prev.savings
-        .filter((s) => s.actual > 0)
-        .reduce((sum, s) => sum + s.actual, 0);
+      // Calculate total available savings from all months with expenses
+      // For current month, use current expenses
+      const currentMonth = new Date().toISOString().substring(0, 7);
+      const currentMonthExpenses = prev.expenses.reduce((sum, exp) => sum + exp.amount, 0);
+      const currentMonthSavings = Math.max(0, prev.totalBudget - currentMonthExpenses);
+      
+      // For past months, use archived expenses
+      const archivedSavings = (prev.monthlyArchives || []).reduce((sum, archive) => {
+        const monthSavings = Math.max(0, archive.totalBudget - archive.totalSpent);
+        return sum + monthSavings;
+      }, 0);
+      
+      const totalAvailableSavings = currentMonthSavings + archivedSavings;
       
       let remainingSavings = totalAvailableSavings;
       

@@ -134,11 +134,20 @@ function App() {
   };
 
   const getMonthlyExpenses = (month: string): number => {
-    const monthExpenses = budget.expenses.filter((exp) => {
+    // Check current expenses first
+    const currentMonthExpenses = budget.expenses.filter((exp) => {
       const expenseMonth = exp.date.substring(0, 7); // YYYY-MM
       return expenseMonth === month;
     });
-    return monthExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+    
+    // If current expenses exist for this month, use them
+    if (currentMonthExpenses.length > 0) {
+      return currentMonthExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+    }
+    
+    // Otherwise check archived expenses
+    const archive = budget.monthlyArchives?.find((a) => a.month === month);
+    return archive ? archive.totalSpent : 0;
   };
 
   // Render Savings Tracker Screen
@@ -151,7 +160,6 @@ function App() {
             longTermGoals={budget.longTermGoals}
             totalBudget={budget.totalBudget}
             onSetSavingsGoal={setSavingsGoal}
-            onCalculateActualSavings={calculateActualSavings}
             onDeleteSavings={deleteSavings}
             onAddLongTermGoal={addLongTermGoal}
             onUpdateLongTermGoal={updateLongTermGoal}

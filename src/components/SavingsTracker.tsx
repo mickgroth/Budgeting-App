@@ -6,7 +6,6 @@ interface SavingsTrackerProps {
   longTermGoals: LongTermSavingsGoal[];
   totalBudget: number;
   onSetSavingsGoal: (month: string, goal: number, notes?: string) => void;
-  onCalculateActualSavings: (month: string) => void;
   onDeleteSavings: (month: string) => void;
   onAddLongTermGoal: (name: string, targetAmount: number, notes?: string) => void;
   onUpdateLongTermGoal: (goalId: string, updates: Partial<Omit<LongTermSavingsGoal, 'id' | 'createdDate'>>) => void;
@@ -25,7 +24,6 @@ export const SavingsTracker: React.FC<SavingsTrackerProps> = ({
   longTermGoals,
   totalBudget,
   onSetSavingsGoal,
-  onCalculateActualSavings,
   onDeleteSavings,
   onAddLongTermGoal,
   onUpdateLongTermGoal,
@@ -124,11 +122,6 @@ export const SavingsTracker: React.FC<SavingsTrackerProps> = ({
     }
 
     onSetSavingsGoal(selectedMonth, goal, notes.trim() || undefined);
-    
-    // Calculate actual savings for past/current months
-    if (selectedMonth <= currentMonth) {
-      onCalculateActualSavings(selectedMonth);
-    }
 
     setShowForm(false);
     setSelectedMonth('');
@@ -149,15 +142,11 @@ export const SavingsTracker: React.FC<SavingsTrackerProps> = ({
     }
   };
 
-  // Auto-calculate actual savings for current month when component loads or monthly expenses update
-  // Note: We rely on the parent component to trigger recalculation when expenses change
-  useEffect(() => {
-    const currentSavings = getSavingsForMonth(currentMonth);
-    if (currentSavings && currentSavings.goal > 0) {
-      onCalculateActualSavings(currentMonth);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentMonth]); // Only recalculate when month changes, not on every expense change
+  // Helper function to calculate actual savings for any month
+  const calculateActualSavings = (month: string): number => {
+    const monthlyExpenses = getMonthlyExpenses(month);
+    return Math.max(0, totalBudget - monthlyExpenses);
+  };
 
   const calculateAvailableBudget = (month: string): number => {
     const savingsEntry = getSavingsForMonth(month);
@@ -237,21 +226,24 @@ export const SavingsTracker: React.FC<SavingsTrackerProps> = ({
 
   // Calculate average monthly savings (from past months only - current month doesn't count yet)
   const calculateAverageMonthlyStrings = (): number => {
-    // Only consider past months (not current) for actual savings
-    const pastSavings = savings.filter(s => s.month < currentMonth && s.actual > 0);
+    // Get all past months that have expense data
+    const pastMonths = monthsToDisplay.filter(m => m < currentMonth);
+    const monthsWithExpenses = pastMonths.filter(m => getMonthlyExpenses(m) > 0);
     
-    if (pastSavings.length === 0) {
+    if (monthsWithExpenses.length === 0) {
       // If no actual savings from past months yet, use the average of set goals as estimate
-      // Include all goals (past, current, and future) for this calculation
       const goalsSet = savings.filter(s => s.goal > 0);
       if (goalsSet.length === 0) return 0;
       const totalGoals = goalsSet.reduce((sum, s) => sum + s.goal, 0);
       return totalGoals / goalsSet.length;
     }
     
-    // Use actual savings from completed past months
-    const total = pastSavings.reduce((sum, s) => sum + s.actual, 0);
-    return total / pastSavings.length;
+    // Calculate actual savings for each past month with expenses
+    const total = monthsWithExpenses.reduce((sum, month) => {
+      return sum + calculateActualSavings(month);
+    }, 0);
+    
+    return total / monthsWithExpenses.length;
   };
 
   // Forecast when a long-term goal will be achieved
@@ -348,8 +340,13 @@ export const SavingsTracker: React.FC<SavingsTrackerProps> = ({
           const isCurrent = isCurrentMonth(month);
           const monthlyExpenses = getMonthlyExpenses(month);
           const availableBudget = calculateAvailableBudget(month);
-          const actualSavings = savingsEntry ? savingsEntry.actual : (totalBudget - monthlyExpenses);
-          const savingsStatus = savingsEntry ? getSavingsStatus(actualSavings, savingsEntry.goal) : 'success';
+          // Always calculate actual savings from expenses
+          const actualSavings = calculateActualSavings(month);
+          // Default goal to 0 if no savings entry exists
+          const savingsGoal = savingsEntry?.goal || 0;
+          const savingsStatus = getSavingsStatus(actualSavings, savingsGoal);
+          // Only show savings info if there are expenses for this month or it's current/past
+          const hasData = monthlyExpenses > 0 || isPast || isCurrent;
 
           return (
             <div
@@ -362,20 +359,20 @@ export const SavingsTracker: React.FC<SavingsTrackerProps> = ({
                 {isPast && <span className="past-badge">Past</span>}
               </div>
 
-              {savingsEntry ? (
+              {hasData ? (
                 <>
                   <div className="savings-goal">
                     <span className="label">Goal:</span>
-                    <span className="amount">{formatCurrency(savingsEntry.goal)}</span>
+                    <span className="amount">{formatCurrency(savingsGoal)}</span>
                   </div>
 
-                  {savingsEntry.notes && (
+                  {savingsEntry?.notes && (
                     <div className="savings-notes">
                       <small>📝 {savingsEntry.notes}</small>
                     </div>
                   )}
 
-                  {(isPast || isCurrent) && (
+                  {hasData && (
                     <>
                       <div className="savings-actual">
                         <span className="label">Actual Savings:</span>
@@ -386,24 +383,24 @@ export const SavingsTracker: React.FC<SavingsTrackerProps> = ({
 
                       {isCurrent ? (
                         // Current month - show "on track" message
-                        actualSavings >= savingsEntry.goal ? (
+                        actualSavings >= savingsGoal ? (
                           <div className="savings-status success">
                             ✅ Great! You're on track to meet your goal
                           </div>
                         ) : (
                           <div className="savings-status warning">
-                            ⚠️ Short by {formatCurrency(savingsEntry.goal - actualSavings)}
+                            ⚠️ Short by {formatCurrency(savingsGoal - actualSavings)}
                           </div>
                         )
                       ) : (
                         // Past month - show achievement/shortfall
-                        actualSavings >= savingsEntry.goal ? (
+                        actualSavings >= savingsGoal ? (
                           <div className="savings-status success">
-                            ✅ Goal achieved! Saved {formatCurrency(actualSavings - savingsEntry.goal)} extra
+                            ✅ Goal achieved! Saved {formatCurrency(actualSavings - savingsGoal)} extra
                           </div>
                         ) : (
                           <div className="savings-status warning">
-                            ⚠️ Short by {formatCurrency(savingsEntry.goal - actualSavings)}
+                            ⚠️ Short by {formatCurrency(savingsGoal - actualSavings)}
                           </div>
                         )
                       )}
