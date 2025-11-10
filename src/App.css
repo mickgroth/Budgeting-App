@@ -279,6 +279,8 @@
   padding: 1.5rem;
   box-shadow: var(--shadow-sm);
   transition: box-shadow 0.2s, transform 0.2s;
+  overflow: hidden; /* Prevent content from overflowing */
+  min-width: 0; /* Allow card to shrink in flex/grid layouts */
 }
 
 .category-card:hover {
@@ -316,17 +318,26 @@
 .amount-row {
   display: flex;
   justify-content: space-between;
+  align-items: baseline;
   margin-bottom: 0.5rem;
+  gap: 0.75rem;
+  min-width: 0; /* Allow flex items to shrink below content size */
 }
 
 .amount-label {
   color: var(--color-text-light);
   font-size: 0.875rem;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .amount-value {
   font-weight: 600;
   color: var(--color-text);
+  text-align: right;
+  min-width: 0; /* Allow text to shrink */
+  word-break: break-word;
+  font-variant-numeric: tabular-nums; /* Better number alignment */
 }
 
 .amount-value.over-budget {
