@@ -80,6 +80,8 @@ function App() {
     updateLongTermGoalProgress,
     archiveCurrentMonth,
     deleteArchive,
+    updateArchivedExpense,
+    deleteArchivedExpense,
     resetBudget,
   } = useBudget(currentUser?.uid || null);
 
