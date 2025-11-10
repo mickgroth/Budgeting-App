@@ -384,14 +384,28 @@ export const SavingsTracker: React.FC<SavingsTrackerProps> = ({
                         </span>
                       </div>
 
-                      {actualSavings >= savingsEntry.goal ? (
-                        <div className="savings-status success">
-                          ✅ Goal achieved! Saved {formatCurrency(actualSavings - savingsEntry.goal)} extra
-                        </div>
+                      {isCurrent ? (
+                        // Current month - show "on track" message
+                        actualSavings >= savingsEntry.goal ? (
+                          <div className="savings-status success">
+                            ✅ Great! You're on track to meet your goal
+                          </div>
+                        ) : (
+                          <div className="savings-status warning">
+                            ⚠️ Short by {formatCurrency(savingsEntry.goal - actualSavings)}
+                          </div>
+                        )
                       ) : (
-                        <div className="savings-status warning">
-                          ⚠️ Short by {formatCurrency(savingsEntry.goal - actualSavings)}
-                        </div>
+                        // Past month - show achievement/shortfall
+                        actualSavings >= savingsEntry.goal ? (
+                          <div className="savings-status success">
+                            ✅ Goal achieved! Saved {formatCurrency(actualSavings - savingsEntry.goal)} extra
+                          </div>
+                        ) : (
+                          <div className="savings-status warning">
+                            ⚠️ Short by {formatCurrency(savingsEntry.goal - actualSavings)}
+                          </div>
+                        )
                       )}
 
                       <div className="savings-details">
