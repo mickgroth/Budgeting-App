@@ -33,8 +33,8 @@ export const BudgetSummary: React.FC<BudgetSummaryProps> = ({
     ? (totalAllocated / budget.totalBudget) * 100 
     : 0;
   
-  // Available to Spend = Budget - Spent
-  const availableToSpend = budget.totalBudget - totalSpent;
+  // Available to Spend = Budget - Spent - Savings Set Aside
+  const availableToSpend = budget.totalBudget - totalSpent - currentMonthSavingsGoal;
   const availablePercentage = budget.totalBudget > 0 
     ? (availableToSpend / budget.totalBudget) * 100 
     : 0;
