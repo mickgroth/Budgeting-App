@@ -188,6 +188,8 @@ function App() {
           <HistoricExpenses
             archives={budget.monthlyArchives}
             onDeleteArchive={deleteArchive}
+            onUpdateArchivedExpense={updateArchivedExpense}
+            onDeleteArchivedExpense={deleteArchivedExpense}
             onBack={() => setCurrentView('budget')}
           />
         </div>

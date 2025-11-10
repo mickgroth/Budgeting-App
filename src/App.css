@@ -2842,11 +2842,178 @@ button:active {
   border-radius: var(--radius);
   margin-bottom: 0.75rem;
   transition: all 0.2s;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
 }
 
 .expense-row-archive:hover {
   transform: translateX(4px);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.expense-row-archive .expense-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.expense-row-archive .expense-info {
+  margin-bottom: 0.5rem;
+}
+
+.expense-row-archive .expense-description {
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.receipt-indicator-btn {
+  background: none;
+  border: none;
+  padding: 0.25rem;
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: transform 0.2s;
+  display: inline-flex;
+  align-items: center;
+}
+
+.receipt-indicator-btn:hover {
+  transform: scale(1.2);
+}
+
+.expense-row-archive .expense-meta {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.875rem;
+  flex-wrap: wrap;
+}
+
+.expense-row-archive .expense-category {
+  font-weight: 500;
+}
+
+.expense-row-archive .expense-date {
+  color: var(--color-text-light);
+}
+
+.expense-row-archive .expense-amount {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.expense-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.btn-edit-expense,
+.btn-delete-expense {
+  background: none;
+  border: none;
+  padding: 0.5rem;
+  cursor: pointer;
+  font-size: 1.2rem;
+  border-radius: var(--radius);
+  transition: all 0.2s;
+}
+
+.btn-edit-expense:hover {
+  background: #EEF2FF;
+}
+
+.btn-delete-expense:hover {
+  background: #FEE2E2;
+}
+
+/* Editing Mode */
+.expense-row-editing {
+  background: #F9FAFB;
+  padding: 1.5rem;
+}
+
+.expense-edit-form {
+  width: 100%;
+}
+
+.edit-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.edit-field-full {
+  grid-column: 1 / -1;
+}
+
+.edit-field label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.edit-input,
+.edit-select {
+  padding: 0.75rem;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.edit-input:focus,
+.edit-select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.edit-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.btn-save-edit,
+.btn-cancel-edit {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: var(--radius);
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-save-edit {
+  background: var(--color-primary);
+  color: white;
+}
+
+.btn-save-edit:hover {
+  background: #2563EB;
+}
+
+.btn-cancel-edit {
+  background: var(--color-border);
+  color: var(--color-text);
+}
+
+.btn-cancel-edit:hover {
+  background: #D1D5DB;
 }
 
 .comparison-section {

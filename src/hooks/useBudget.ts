@@ -673,6 +673,109 @@ export const useBudget = (userId: string | null) => {
   };
 
   /**
+   * Update an expense within a specific archived month
+   */
+  const updateArchivedExpense = (
+    archiveId: string,
+    expenseId: string,
+    updates: Partial<Omit<Expense, 'id'>>
+  ) => {
+    setBudget((prev) => {
+      const updatedArchives = (prev.monthlyArchives || []).map((archive) => {
+        if (archive.id !== archiveId) return archive;
+
+        // Update the expense
+        const updatedExpenses = archive.expenses.map((exp) =>
+          exp.id === expenseId ? { ...exp, ...updates } : exp
+        );
+
+        // Recalculate category spending
+        const categoryMap = new Map<string, number>();
+        updatedExpenses.forEach((exp) => {
+          const currentSpent = categoryMap.get(exp.categoryId) || 0;
+          categoryMap.set(exp.categoryId, currentSpent + exp.amount);
+        });
+
+        // Update category snapshots with new spending
+        const updatedCategorySnapshots = archive.categorySnapshots.map((cat) => ({
+          ...cat,
+          spent: categoryMap.get(cat.id) || 0,
+        }));
+
+        // Recalculate total spent
+        const totalSpent = updatedExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+
+        return {
+          ...archive,
+          expenses: updatedExpenses,
+          categorySnapshots: updatedCategorySnapshots,
+          totalSpent,
+        };
+      });
+
+      return {
+        ...prev,
+        monthlyArchives: updatedArchives,
+      };
+    });
+  };
+
+  /**
+   * Delete an expense from a specific archived month
+   */
+  const deleteArchivedExpense = async (archiveId: string, expenseId: string) => {
+    // Find the expense to check for receipt image
+    const archive = budget.monthlyArchives?.find((a) => a.id === archiveId);
+    const expenseToDelete = archive?.expenses.find((exp) => exp.id === expenseId);
+
+    // Delete receipt image if it exists in Firebase Storage
+    if (expenseToDelete?.receiptImage && StorageService.isStorageURL(expenseToDelete.receiptImage)) {
+      try {
+        await StorageService.deleteReceiptImage(expenseToDelete.receiptImage);
+      } catch (error) {
+        console.error('Error deleting receipt image:', error);
+      }
+    }
+
+    setBudget((prev) => {
+      const updatedArchives = (prev.monthlyArchives || []).map((archive) => {
+        if (archive.id !== archiveId) return archive;
+
+        // Remove the expense
+        const updatedExpenses = archive.expenses.filter((exp) => exp.id !== expenseId);
+
+        // Recalculate category spending
+        const categoryMap = new Map<string, number>();
+        updatedExpenses.forEach((exp) => {
+          const currentSpent = categoryMap.get(exp.categoryId) || 0;
+          categoryMap.set(exp.categoryId, currentSpent + exp.amount);
+        });
+
+        // Update category snapshots with new spending
+        const updatedCategorySnapshots = archive.categorySnapshots.map((cat) => ({
+          ...cat,
+          spent: categoryMap.get(cat.id) || 0,
+        }));
+
+        // Recalculate total spent
+        const totalSpent = updatedExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+
+        return {
+          ...archive,
+          expenses: updatedExpenses,
+          categorySnapshots: updatedCategorySnapshots,
+          totalSpent,
+        };
+      });
+
+      return {
+        ...prev,
+        monthlyArchives: updatedArchives,
+      };
+    });
+  };
+
+  /**
    * Reset all data
    */
   const resetBudget = () => {
@@ -710,6 +813,8 @@ export const useBudget = (userId: string | null) => {
     updateLongTermGoalProgress,
     archiveCurrentMonth,
     deleteArchive,
+    updateArchivedExpense,
+    deleteArchivedExpense,
     resetBudget,
   };
 };

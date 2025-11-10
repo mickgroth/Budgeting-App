@@ -1,10 +1,16 @@
 import React, { useState } from 'react';
-import { MonthlyArchive } from '../types/budget';
+import { MonthlyArchive, Expense } from '../types/budget';
 import { formatCurrency } from '../utils/budgetHelpers';
 
 interface HistoricExpensesProps {
   archives: MonthlyArchive[];
   onDeleteArchive: (archiveId: string) => void;
+  onUpdateArchivedExpense: (
+    archiveId: string,
+    expenseId: string,
+    updates: Partial<Omit<Expense, 'id'>>
+  ) => void;
+  onDeleteArchivedExpense: (archiveId: string, expenseId: string) => void;
   onBack: () => void;
 }
 
@@ -14,11 +20,18 @@ interface HistoricExpensesProps {
 export const HistoricExpenses: React.FC<HistoricExpensesProps> = ({
   archives,
   onDeleteArchive,
+  onUpdateArchivedExpense,
+  onDeleteArchivedExpense,
   onBack,
 }) => {
   const [selectedMonth, setSelectedMonth] = useState<string>(
     archives.length > 0 ? archives[0].month : ''
   );
+  const [viewingReceipt, setViewingReceipt] = useState<Expense | null>(null);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [editAmount, setEditAmount] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editCategoryId, setEditCategoryId] = useState('');
 
   const formatMonthDisplay = (month: string): string => {
     // month is in format YYYY-MM (e.g., "2025-10" for October 2025)
@@ -32,6 +45,48 @@ export const HistoricExpenses: React.FC<HistoricExpensesProps> = ({
   };
 
   const selectedArchive = archives.find(archive => archive.month === selectedMonth);
+
+  const handleEdit = (expense: Expense) => {
+    setEditingExpense(expense);
+    setEditAmount(expense.amount.toString());
+    setEditDescription(expense.description);
+    setEditCategoryId(expense.categoryId);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingExpense || !selectedArchive) return;
+
+    const amount = parseFloat(editAmount);
+    if (isNaN(amount) || amount <= 0) {
+      alert('Please enter a valid amount greater than 0');
+      return;
+    }
+
+    if (!editDescription.trim()) {
+      alert('Please enter a description');
+      return;
+    }
+
+    onUpdateArchivedExpense(selectedArchive.id, editingExpense.id, {
+      amount,
+      description: editDescription.trim(),
+      categoryId: editCategoryId,
+    });
+
+    setEditingExpense(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingExpense(null);
+  };
+
+  const handleDeleteExpense = (expenseId: string, description: string) => {
+    if (!selectedArchive) return;
+    
+    if (window.confirm(`Delete expense "${description}"?`)) {
+      onDeleteArchivedExpense(selectedArchive.id, expenseId);
+    }
+  };
 
   const handleDeleteArchive = (archiveId: string, month: string) => {
     if (window.confirm(`Delete all data for ${formatMonthDisplay(month)}?`)) {
@@ -202,6 +257,69 @@ export const HistoricExpenses: React.FC<HistoricExpensesProps> = ({
                     const category = selectedArchive.categorySnapshots.find(
                       (cat) => cat.id === expense.categoryId
                     );
+                    const isEditing = editingExpense?.id === expense.id;
+
+                    if (isEditing) {
+                      // Edit mode
+                      return (
+                        <div
+                          key={expense.id}
+                          className="expense-row-archive expense-row-editing"
+                          style={{ borderLeftColor: category?.color || '#6B7280' }}
+                        >
+                          <div className="expense-edit-form">
+                            <div className="edit-row">
+                              <div className="edit-field">
+                                <label>Amount</label>
+                                <input
+                                  type="number"
+                                  value={editAmount}
+                                  onChange={(e) => setEditAmount(e.target.value)}
+                                  step="0.01"
+                                  min="0"
+                                  className="edit-input"
+                                />
+                              </div>
+                              <div className="edit-field">
+                                <label>Category</label>
+                                <select
+                                  value={editCategoryId}
+                                  onChange={(e) => setEditCategoryId(e.target.value)}
+                                  className="edit-select"
+                                >
+                                  {selectedArchive.categorySnapshots.map((cat) => (
+                                    <option key={cat.id} value={cat.id}>
+                                      {cat.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
+                            <div className="edit-row">
+                              <div className="edit-field edit-field-full">
+                                <label>Description</label>
+                                <input
+                                  type="text"
+                                  value={editDescription}
+                                  onChange={(e) => setEditDescription(e.target.value)}
+                                  className="edit-input"
+                                />
+                              </div>
+                            </div>
+                            <div className="edit-actions">
+                              <button className="btn-save-edit" onClick={handleSaveEdit}>
+                                ✓ Save
+                              </button>
+                              <button className="btn-cancel-edit" onClick={handleCancelEdit}>
+                                ✕ Cancel
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // View mode
                     return (
                       <div
                         key={expense.id}
@@ -213,9 +331,13 @@ export const HistoricExpenses: React.FC<HistoricExpensesProps> = ({
                             <div className="expense-description">
                               {expense.description}
                               {expense.receiptImage && (
-                                <span className="receipt-indicator" title="Has receipt">
+                                <button
+                                  className="receipt-indicator-btn"
+                                  title="View receipt"
+                                  onClick={() => setViewingReceipt(expense)}
+                                >
                                   📄
-                                </span>
+                                </button>
                               )}
                             </div>
                             <div className="expense-meta">
@@ -236,6 +358,22 @@ export const HistoricExpenses: React.FC<HistoricExpensesProps> = ({
                             </div>
                           </div>
                           <div className="expense-amount">{formatCurrency(expense.amount)}</div>
+                        </div>
+                        <div className="expense-actions">
+                          <button
+                            className="btn-edit-expense"
+                            onClick={() => handleEdit(expense)}
+                            title="Edit expense"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            className="btn-delete-expense"
+                            onClick={() => handleDeleteExpense(expense.id, expense.description)}
+                            title="Delete expense"
+                          >
+                            🗑️
+                          </button>
                         </div>
                       </div>
                     );
@@ -279,6 +417,57 @@ export const HistoricExpenses: React.FC<HistoricExpensesProps> = ({
                     ✅ Under budget by {formatCurrency(selectedArchive.totalBudget - selectedArchive.totalSpent)}
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Receipt Viewing Modal */}
+      {viewingReceipt && (
+        <div className="modal-overlay" onClick={() => setViewingReceipt(null)}>
+          <div className="receipt-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="receipt-modal-header">
+              <h3>Receipt: {viewingReceipt.description}</h3>
+              <button
+                className="btn-close-modal"
+                onClick={() => setViewingReceipt(null)}
+                title="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="receipt-modal-body">
+              <img
+                src={viewingReceipt.receiptImage}
+                alt={`Receipt for ${viewingReceipt.description}`}
+                className="receipt-image-large"
+              />
+              <div className="receipt-details">
+                <div className="receipt-detail-row">
+                  <span className="detail-label">Category:</span>
+                  <span className="detail-value">
+                    {selectedArchive?.categorySnapshots.find(
+                      (cat) => cat.id === viewingReceipt.categoryId
+                    )?.name || 'Unknown'}
+                  </span>
+                </div>
+                <div className="receipt-detail-row">
+                  <span className="detail-label">Amount:</span>
+                  <span className="detail-value">{formatCurrency(viewingReceipt.amount)}</span>
+                </div>
+                <div className="receipt-detail-row">
+                  <span className="detail-label">Date:</span>
+                  <span className="detail-value">
+                    {new Date(viewingReceipt.date).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
