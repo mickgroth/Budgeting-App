@@ -158,6 +158,7 @@ function App() {
           <SavingsTracker
             savings={budget.savings}
             longTermGoals={budget.longTermGoals}
+            monthlyArchives={budget.monthlyArchives}
             totalBudget={budget.totalBudget}
             onSetSavingsGoal={setSavingsGoal}
             onDeleteSavings={deleteSavings}

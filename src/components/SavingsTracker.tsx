@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { MonthlySavings, LongTermSavingsGoal } from '../types/budget';
+import { MonthlySavings, LongTermSavingsGoal, MonthlyArchive } from '../types/budget';
 
 interface SavingsTrackerProps {
   savings: MonthlySavings[];
   longTermGoals: LongTermSavingsGoal[];
+  monthlyArchives: MonthlyArchive[];
   totalBudget: number;
   onSetSavingsGoal: (month: string, goal: number, notes?: string) => void;
   onDeleteSavings: (month: string) => void;
@@ -22,6 +23,7 @@ interface SavingsTrackerProps {
 export const SavingsTracker: React.FC<SavingsTrackerProps> = ({
   savings,
   longTermGoals,
+  monthlyArchives,
   totalBudget,
   onSetSavingsGoal,
   onDeleteSavings,
@@ -55,6 +57,13 @@ export const SavingsTracker: React.FC<SavingsTrackerProps> = ({
     savings.forEach(s => {
       if (s.month <= currentMonth) {
         months.add(s.month);
+      }
+    });
+    
+    // Add all months from archived expenses
+    monthlyArchives.forEach(archive => {
+      if (archive.month <= currentMonth) {
+        months.add(archive.month);
       }
     });
     
