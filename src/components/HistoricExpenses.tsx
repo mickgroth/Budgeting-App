@@ -73,6 +73,18 @@ export const HistoricExpenses: React.FC<HistoricExpensesProps> = ({
         <h1>Historic Expenses</h1>
       </div>
 
+      {archives.length > 1 && (
+        <div className="comparison-banner">
+          <p>📊 Compare spending across multiple months</p>
+          <button
+            className="btn-comparison"
+            onClick={() => window.location.hash = 'comparison'}
+          >
+            View Monthly Comparison
+          </button>
+        </div>
+      )}
+
       {/* Month Selector */}
       <div className="month-selector">
         <label htmlFor="month-select">View Month:</label>

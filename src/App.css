@@ -3154,3 +3154,341 @@ button:active {
     width: 100%;
   }
 }
+
+/* Monthly Comparison Styles */
+.monthly-comparison {
+  padding: 2rem 0;
+}
+
+.comparison-banner {
+  background: linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%);
+  border: 2px solid #3B82F6;
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.comparison-banner p {
+  margin: 0;
+  font-size: 1.125rem;
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.btn-comparison {
+  background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: var(--radius);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.btn-comparison:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.month-selection-panel {
+  background: var(--color-card);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.selection-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.selection-header h3 {
+  margin: 0;
+  color: var(--color-text);
+}
+
+.selection-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-select-action {
+  background: white;
+  color: var(--color-text);
+  border: 2px solid var(--color-border);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-select-action:hover {
+  background: #F9FAFB;
+  border-color: var(--color-primary);
+}
+
+.month-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.month-chip {
+  background: white;
+  border: 2px solid var(--color-border);
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--radius-lg);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-text);
+}
+
+.month-chip:hover {
+  border-color: var(--color-primary);
+  background: #F8FAFC;
+}
+
+.month-chip.selected {
+  background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+  border-color: #3B82F6;
+  color: white;
+}
+
+.chip-check {
+  font-size: 0.875rem;
+}
+
+.comparison-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.comparison-table-container {
+  background: var(--color-card);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  overflow-x: auto;
+  margin-bottom: 2rem;
+}
+
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+.comparison-table th {
+  background: #F9FAFB;
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: var(--color-text);
+  border-bottom: 2px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.comparison-table td {
+  padding: 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.category-column {
+  min-width: 180px;
+  position: sticky;
+  left: 0;
+  background: white;
+  z-index: 5;
+}
+
+.month-column {
+  min-width: 120px;
+  text-align: right;
+}
+
+.total-column,
+.average-column {
+  min-width: 120px;
+  text-align: right;
+  font-weight: 600;
+  background: #FFFBEB;
+}
+
+.trend-column {
+  min-width: 100px;
+  text-align: center;
+}
+
+.category-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 500;
+}
+
+.amount-cell {
+  text-align: right;
+  color: var(--color-text);
+}
+
+.total-cell,
+.average-cell {
+  text-align: right;
+  color: var(--color-text);
+  background: #FFFBEB;
+}
+
+.trend-cell {
+  text-align: center;
+}
+
+.trend-indicator {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.trend-up {
+  background: #FEE2E2;
+  color: #991B1B;
+}
+
+.trend-down {
+  background: #D1FAE5;
+  color: #065F46;
+}
+
+.totals-row {
+  background: #F9FAFB;
+  border-top: 2px solid var(--color-border);
+}
+
+.totals-row td {
+  padding: 1.25rem 1rem;
+  font-weight: 600;
+}
+
+.insights-section {
+  background: var(--color-card);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+}
+
+.insights-section h3 {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  color: var(--color-text);
+}
+
+.insights-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.insight-card {
+  background: white;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+}
+
+.insight-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.75rem;
+}
+
+.insight-content {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.insight-value {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-text);
+  flex: 1;
+}
+
+.insight-amount {
+  font-size: 1rem;
+  color: var(--color-text-light);
+}
+
+@media (max-width: 768px) {
+  .comparison-banner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .btn-comparison {
+    width: 100%;
+  }
+
+  .selection-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .selection-actions {
+    width: 100%;
+  }
+
+  .btn-select-action {
+    flex: 1;
+  }
+
+  .comparison-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .comparison-table {
+    font-size: 0.8125rem;
+  }
+
+  .comparison-table th,
+  .comparison-table td {
+    padding: 0.75rem 0.5rem;
+  }
+
+  .category-column {
+    min-width: 140px;
+  }
+
+  .month-column {
+    min-width: 100px;
+  }
+
+  .insights-grid {
+    grid-template-columns: 1fr;
+  }
+}

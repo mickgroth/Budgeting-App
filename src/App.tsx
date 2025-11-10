@@ -8,13 +8,14 @@ import { ExpensesList } from './components/ExpensesList';
 import { ImportBudgetExcel } from './components/ImportBudgetExcel';
 import { SavingsTracker } from './components/SavingsTracker';
 import { HistoricExpenses } from './components/HistoricExpenses';
+import { MonthlyComparison } from './components/MonthlyComparison';
 import { ArchiveMonthModal } from './components/ArchiveMonthModal';
 import { AuthScreen } from './components/AuthScreen';
 import { UserProfile } from './components/UserProfile';
 import { AuthService } from './services/authService';
 import './App.css';
 
-type View = 'budget' | 'add-expense' | 'savings' | 'historic';
+type View = 'budget' | 'add-expense' | 'savings' | 'historic' | 'comparison';
 
 /**
  * Main application component for the Budget Tracker
@@ -25,6 +26,18 @@ function App() {
   const [currentView, setCurrentView] = useState<View>('budget');
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [showArchiveModal, setShowArchiveModal] = useState(false);
+
+  // Handle hash-based navigation for comparison view
+  useEffect(() => {
+    const handleHashChange = () => {
+      if (window.location.hash === '#comparison') {
+        setCurrentView('comparison');
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    handleHashChange(); // Check on mount
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
   
   // Listen for authentication state changes
   useEffect(() => {
@@ -176,6 +189,23 @@ function App() {
             archives={budget.monthlyArchives}
             onDeleteArchive={deleteArchive}
             onBack={() => setCurrentView('budget')}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Render Monthly Comparison Screen
+  if (currentView === 'comparison') {
+    return (
+      <div className="app">
+        <div className="container">
+          <MonthlyComparison
+            archives={budget.monthlyArchives}
+            onBack={() => {
+              window.location.hash = '';
+              setCurrentView('historic');
+            }}
           />
         </div>
       </div>
