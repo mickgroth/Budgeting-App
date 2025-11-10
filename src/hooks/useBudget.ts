@@ -453,6 +453,7 @@ export const useBudget = (userId: string | null) => {
 
   /**
    * Reorder a long-term savings goal (move up or down)
+   * Automatically re-attributes saved money based on new order
    */
   const reorderLongTermGoal = (goalId: string, direction: 'up' | 'down') => {
     setBudget((prev) => {
@@ -471,9 +472,34 @@ export const useBudget = (userId: string | null) => {
       // Reassign order values
       const reordered = sorted.map((goal, index) => ({ ...goal, order: index }));
       
+      // Re-calculate and re-attribute saved money based on new order
+      const totalAvailableSavings = prev.savings
+        .filter((s) => s.actual > 0)
+        .reduce((sum, s) => sum + s.actual, 0);
+      
+      let remainingSavings = totalAvailableSavings;
+      
+      // Allocate savings sequentially to goals in their new order
+      const reorderedWithNewAmounts = reordered.map((goal) => {
+        if (remainingSavings <= 0) {
+          return { ...goal, currentAmount: 0 };
+        }
+        
+        if (remainingSavings >= goal.targetAmount) {
+          // This goal is fully funded
+          remainingSavings -= goal.targetAmount;
+          return { ...goal, currentAmount: goal.targetAmount };
+        } else {
+          // This goal is partially funded (active goal)
+          const allocated = remainingSavings;
+          remainingSavings = 0;
+          return { ...goal, currentAmount: allocated };
+        }
+      });
+      
       return {
         ...prev,
-        longTermGoals: reordered,
+        longTermGoals: reorderedWithNewAmounts,
       };
     });
   };
