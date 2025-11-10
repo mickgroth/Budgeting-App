@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Budget, BudgetCategory, Expense, MonthlySavings, LongTermSavingsGoal, CATEGORY_COLORS } from '../types/budget';
 import { generateId } from '../utils/budgetHelpers';
 import { FirebaseService } from '../services/firebaseService';
+import { StorageService } from '../services/storageService';
 
 // Default initial state
 const defaultBudget: Budget = {
@@ -255,7 +256,18 @@ export const useBudget = (userId: string | null) => {
   /**
    * Delete an expense and recalculate category spending
    */
-  const deleteExpense = (expenseId: string) => {
+  const deleteExpense = async (expenseId: string) => {
+    // First, delete the receipt image from Storage if it exists
+    const expenseToDelete = budget.expenses.find((exp) => exp.id === expenseId);
+    if (expenseToDelete?.receiptImage && StorageService.isStorageURL(expenseToDelete.receiptImage)) {
+      try {
+        await StorageService.deleteReceiptImage(expenseToDelete.receiptImage);
+      } catch (error) {
+        console.error('Error deleting receipt image:', error);
+        // Continue with expense deletion even if image deletion fails
+      }
+    }
+
     setBudget((prev) => {
       const expenseToDelete = prev.expenses.find((exp) => exp.id === expenseId);
       if (!expenseToDelete) return prev;

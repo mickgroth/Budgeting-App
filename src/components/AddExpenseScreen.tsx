@@ -2,9 +2,11 @@ import React, { useState, useRef } from 'react';
 import { createWorker } from 'tesseract.js';
 import heic2any from 'heic2any';
 import { BudgetCategory } from '../types/budget';
-import { formatCurrency } from '../utils/budgetHelpers';
+import { formatCurrency, generateId } from '../utils/budgetHelpers';
+import { StorageService } from '../services/storageService';
 
 interface AddExpenseScreenProps {
+  userId: string;
   categories: BudgetCategory[];
   onAddExpense: (categoryId: string, amount: number, description: string, receiptImage?: string) => void;
   onBack: () => void;
@@ -14,6 +16,7 @@ interface AddExpenseScreenProps {
  * Screen for logging new expenses with receipt scanning
  */
 export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({
+  userId,
   categories,
   onAddExpense,
   onBack,
@@ -24,6 +27,7 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({
   const [error, setError] = useState<string>('');
   const [receiptImage, setReceiptImage] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState<boolean>(false);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
   const [scanProgress, setScanProgress] = useState<number>(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -459,7 +463,7 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -480,10 +484,34 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({
       return;
     }
 
-    onAddExpense(selectedCategoryId, amountNum, description, receiptImage || undefined);
+    // Upload receipt to Firebase Storage if present
+    let receiptStorageUrl: string | undefined = undefined;
     
-    // Navigate back to main screen after successful submission
-    onBack();
+    if (receiptImage) {
+      try {
+        setIsUploading(true);
+        const expenseId = generateId(); // Generate ID before upload
+        receiptStorageUrl = await StorageService.uploadReceiptImage(userId, expenseId, receiptImage);
+        console.log('Receipt uploaded to Storage:', receiptStorageUrl);
+      } catch (err) {
+        console.error('Failed to upload receipt:', err);
+        setError('Failed to upload receipt image. Please try again.');
+        setIsUploading(false);
+        return;
+      }
+    }
+
+    try {
+      onAddExpense(selectedCategoryId, amountNum, description, receiptStorageUrl);
+      
+      // Navigate back to main screen after successful submission
+      onBack();
+    } catch (err) {
+      console.error('Failed to add expense:', err);
+      setError('Failed to add expense. Please try again.');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
@@ -644,10 +672,10 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({
           </div>
 
           <div className="form-actions-horizontal">
-            <button type="submit" className="btn-primary" disabled={isScanning}>
-              Add Expense
+            <button type="submit" className="btn-primary" disabled={isScanning || isUploading}>
+              {isUploading ? 'Uploading Receipt...' : 'Add Expense'}
             </button>
-            <button type="button" className="btn-secondary" onClick={onBack} disabled={isScanning}>
+            <button type="button" className="btn-secondary" onClick={onBack} disabled={isScanning || isUploading}>
               Cancel
             </button>
           </div>
