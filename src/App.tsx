@@ -7,6 +7,9 @@ import { AddExpenseScreen } from './components/AddExpenseScreen';
 import { ExpensesList } from './components/ExpensesList';
 import { ImportBudgetExcel } from './components/ImportBudgetExcel';
 import { SavingsTracker } from './components/SavingsTracker';
+import { AuthScreen } from './components/AuthScreen';
+import { UserProfile } from './components/UserProfile';
+import { AuthService } from './services/authService';
 import './App.css';
 
 type View = 'budget' | 'add-expense' | 'savings';
@@ -15,9 +18,29 @@ type View = 'budget' | 'add-expense' | 'savings';
  * Main application component for the Budget Tracker
  */
 function App() {
+  const [currentUser, setCurrentUser] = useState<{ uid: string; displayName: string | null; email: string | null } | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [currentView, setCurrentView] = useState<View>('budget');
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   
+  // Listen for authentication state changes
+  useEffect(() => {
+    const unsubscribe = AuthService.onAuthStateChanged((user) => {
+      if (user) {
+        setCurrentUser({
+          uid: user.uid,
+          displayName: user.displayName,
+          email: user.email,
+        });
+      } else {
+        setCurrentUser(null);
+      }
+      setIsAuthLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   const {
     budget,
     isLoading,
@@ -40,7 +63,7 @@ function App() {
     reorderLongTermGoal,
     updateLongTermGoalProgress,
     resetBudget,
-  } = useBudget();
+  } = useBudget(currentUser?.uid || null);
 
   // Auto-hide success message after 3 seconds
   useEffect(() => {
@@ -138,6 +161,24 @@ function App() {
     );
   }
 
+  // Show authentication loading state
+  if (isAuthLoading) {
+    return (
+      <div className="app">
+        <div className="container">
+          <div style={{ textAlign: 'center', padding: '2rem' }}>
+            <p>Loading...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show authentication screen if not logged in
+  if (!currentUser) {
+    return <AuthScreen onAuthSuccess={() => {}} />;
+  }
+
   // Show loading state
   if (isLoading) {
     return (
@@ -155,6 +196,17 @@ function App() {
   return (
     <div className="app">
       <div className="container">
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          marginBottom: '1rem',
+          position: 'relative'
+        }}>
+          <h1 style={{ margin: 0, fontSize: '1.5rem' }}>💰 Budget Tracker</h1>
+          <UserProfile userName={currentUser.displayName} userEmail={currentUser.email} />
+        </div>
+
         {error && (
           <div className="error-banner" style={{ 
             backgroundColor: '#fee', 

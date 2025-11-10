@@ -9,18 +9,17 @@ import {
 import { db } from '../config/firebase';
 import { Budget } from '../types/budget';
 
-const BUDGET_DOC_ID = 'budget-data';
-
 /**
  * Service for managing budget data in Firebase Firestore
+ * Each user has their own budget document
  */
 export class FirebaseService {
   /**
-   * Get budget data from Firestore
+   * Get budget data from Firestore for a specific user
    */
-  static async getBudget(): Promise<Budget | null> {
+  static async getBudget(userId: string): Promise<Budget | null> {
     try {
-      const docRef = doc(db, 'budget', BUDGET_DOC_ID);
+      const docRef = doc(db, 'budgets', userId);
       const docSnap = await getDoc(docRef);
       
       if (docSnap.exists()) {
@@ -35,12 +34,12 @@ export class FirebaseService {
   }
 
   /**
-   * Save budget data to Firestore
+   * Save budget data to Firestore for a specific user
    */
-  static async saveBudget(budget: Budget): Promise<void> {
+  static async saveBudget(userId: string, budget: Budget): Promise<void> {
     try {
-      const docRef = doc(db, 'budget', BUDGET_DOC_ID);
-      console.log('Saving budget to Firestore:', {
+      const docRef = doc(db, 'budgets', userId);
+      console.log('Saving budget to Firestore for user:', userId, {
         categories: budget.categories.length,
         expenses: budget.expenses.length,
         savings: budget.savings.length,
@@ -55,11 +54,11 @@ export class FirebaseService {
   }
 
   /**
-   * Update budget data in Firestore
+   * Update budget data in Firestore for a specific user
    */
-  static async updateBudget(updates: Partial<Budget>): Promise<void> {
+  static async updateBudget(userId: string, updates: Partial<Budget>): Promise<void> {
     try {
-      const docRef = doc(db, 'budget', BUDGET_DOC_ID);
+      const docRef = doc(db, 'budgets', userId);
       await updateDoc(docRef, updates);
     } catch (error) {
       console.error('Error updating budget:', error);
@@ -68,13 +67,14 @@ export class FirebaseService {
   }
 
   /**
-   * Subscribe to real-time budget updates
+   * Subscribe to real-time budget updates for a specific user
    */
   static subscribeToBudget(
+    userId: string,
     callback: (budget: Budget | null) => void,
     onError?: (error: FirestoreError) => void
   ): () => void {
-    const docRef = doc(db, 'budget', BUDGET_DOC_ID);
+    const docRef = doc(db, 'budgets', userId);
     
     return onSnapshot(
       docRef,
