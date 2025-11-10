@@ -335,9 +335,11 @@
   font-weight: 600;
   color: var(--color-text);
   text-align: right;
-  min-width: 0; /* Allow text to shrink */
-  word-break: break-word;
+  white-space: nowrap; /* Keep numbers on one line */
   font-variant-numeric: tabular-nums; /* Better number alignment */
+  flex-shrink: 1; /* Allow to shrink if needed */
+  overflow: hidden; /* Hide overflow */
+  text-overflow: ellipsis; /* Show ... if too long */
 }
 
 .amount-value.over-budget {
