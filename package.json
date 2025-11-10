@@ -1,0 +1,29 @@
+{
+  "name": "budgeting-app",
+  "version": "1.0.0",
+  "description": "A budgeting app to manage and track budget categories",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "heic2any": "0.0.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "tesseract.js": "^4.1.1",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^14.0.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^3.1.0",
+    "jsdom": "^22.1.0",
+    "typescript": "^4.9.5",
+    "vite": "^3.2.7",
+    "vitest": "^0.28.5"
+  }
+}
