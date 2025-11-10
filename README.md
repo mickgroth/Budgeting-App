@@ -306,11 +306,13 @@ The app is fully optimized for mobile devices:
 
 ## Data Persistence
 
-All budget data is automatically saved to browser localStorage:
-- Changes are persisted immediately
-- Data survives page refreshes
-- Each user's data is stored locally on their device
-- No server or database required
+All budget data is automatically saved to Firebase Firestore:
+- Changes are persisted immediately to the cloud
+- Data survives page refreshes and device changes
+- **Shared data**: All users see the same budget data
+- **Real-time sync**: Changes made by one user appear instantly for others
+- **Cloud storage**: Access your budget from any device
+- **No data loss**: Data persists even if you clear your browser cache
 
 ## Browser Support
 
@@ -377,6 +379,42 @@ Possible features for future versions:
 - Expense tags and notes
 - Budget analytics and insights
 - Multi-language OCR support
+
+## Deployment
+
+To make your app accessible on the web, you can deploy it using free hosting services:
+
+### Quick Deploy with Vercel (Recommended)
+
+1. **Push your code to GitHub** (if not already):
+   ```bash
+   git add .
+   git commit -m "Prepare for deployment"
+   git push origin main
+   ```
+
+2. **Go to [vercel.com](https://vercel.com)** and sign up/login (free)
+
+3. **Click "Add New Project"** and import your GitHub repository
+
+4. **Vercel will auto-detect** it's a Vite app - just click "Deploy"
+
+5. **Get your URL** - Vercel will give you a URL like `https://budgeting-app-xyz.vercel.app`
+
+6. **Share the URL** with anyone who needs access!
+
+**Note**: The app uses Firebase Firestore, so data is shared between all users and synced in real-time.
+
+**Important**: Before deploying, you need to set up Firebase. See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed instructions.
+
+### Alternative: Netlify
+
+1. Push to GitHub
+2. Go to [netlify.com](https://netlify.com) and sign up
+3. Import your repository
+4. Set build command: `npm run build`
+5. Set publish directory: `dist`
+6. Deploy!
 
 ## License
 

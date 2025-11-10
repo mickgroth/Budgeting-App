@@ -20,6 +20,8 @@ function App() {
   
   const {
     budget,
+    isLoading,
+    error,
     setTotalBudget,
     addCategory,
     updateCategory,
@@ -136,10 +138,35 @@ function App() {
     );
   }
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="app">
+        <div className="container">
+          <div style={{ textAlign: 'center', padding: '2rem' }}>
+            <p>Loading budget data...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Render Main Budget Screen
   return (
     <div className="app">
       <div className="container">
+        {error && (
+          <div className="error-banner" style={{ 
+            backgroundColor: '#fee', 
+            color: '#c33', 
+            padding: '1rem', 
+            marginBottom: '1rem', 
+            borderRadius: '4px',
+            border: '1px solid #fcc'
+          }}>
+            ⚠️ {error}
+          </div>
+        )}
         {showSuccessMessage && (
           <div className="success-banner">
             ✅ Expense added successfully!
