@@ -15,6 +15,32 @@ import { Budget } from '../types/budget';
  */
 export class FirebaseService {
   /**
+   * Remove undefined values from an object (Firestore doesn't allow undefined)
+   * Recursively cleans nested objects and arrays
+   */
+  private static removeUndefined<T>(obj: T): T {
+    if (obj === null || obj === undefined) {
+      return obj;
+    }
+
+    if (Array.isArray(obj)) {
+      return obj.map(item => this.removeUndefined(item)) as T;
+    }
+
+    if (typeof obj === 'object') {
+      const cleaned: any = {};
+      for (const key in obj) {
+        if (obj[key] !== undefined) {
+          cleaned[key] = this.removeUndefined(obj[key]);
+        }
+      }
+      return cleaned as T;
+    }
+
+    return obj;
+  }
+
+  /**
    * Get budget data from Firestore for a specific user
    */
   static async getBudget(userId: string): Promise<Budget | null> {
@@ -45,7 +71,11 @@ export class FirebaseService {
         savings: budget.savings.length,
         longTermGoals: budget.longTermGoals.length
       });
-      await setDoc(docRef, budget, { merge: true });
+      
+      // Remove undefined values (Firestore doesn't allow them)
+      const cleanedBudget = this.removeUndefined(budget);
+      
+      await setDoc(docRef, cleanedBudget, { merge: true });
       console.log('Budget saved successfully to Firestore');
     } catch (error) {
       console.error('Error saving budget to Firestore:', error);
