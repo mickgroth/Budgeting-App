@@ -87,7 +87,7 @@ export const BudgetSummary: React.FC<BudgetSummaryProps> = ({
                 {currentMonth} Budget Consumption
               </span>
               <span className="overall-progress-amounts">
-                {formatCurrency(totalSpent)} of {formatCurrency(currentMonthSavingsGoal > 0 ? (budget.totalBudget - currentMonthSavingsGoal) : budget.totalBudget)} {currentMonthSavingsGoal > 0 ? 'available for expenses' : 'budget'} spent
+                {formatCurrency(totalSpent)} of {formatCurrency(currentMonthSavingsGoal > 0 ? (budget.totalBudget - currentMonthSavingsGoal) : budget.totalBudget)} spent
                 <strong className={spentPercentage > 100 ? 'over-budget' : ''}>
                   {' '}({spentPercentage.toFixed(1)}%)
                 </strong>
