@@ -286,7 +286,7 @@ export const SavingsTracker: React.FC<SavingsTrackerProps> = ({
         </button>
         <h1>💰 Savings Tracker</h1>
         <p className="savings-description">
-          Set monthly savings goals and track your actual savings. Your savings goal is subtracted from your available budget for expenses.
+          Set monthly savings goals and track your actual savings. Your savings goal is subtracted from your available to spend.
         </p>
       </div>
 
@@ -312,7 +312,7 @@ export const SavingsTracker: React.FC<SavingsTrackerProps> = ({
             {goalAmount && parseFloat(goalAmount) > 0 && (
               <div className="budget-preview">
                 <p>
-                  <strong>Available for Expenses:</strong> {formatCurrency(calculateAvailableBudget(selectedMonth))}
+                  <strong>Available to Spend:</strong> {formatCurrency(calculateAvailableBudget(selectedMonth))}
                 </p>
                 <small>
                   (Budget {formatCurrency(totalBudget)} - Savings Goal {formatCurrency(parseFloat(goalAmount))})
@@ -424,7 +424,7 @@ export const SavingsTracker: React.FC<SavingsTrackerProps> = ({
                           <span>{formatCurrency(monthlyExpenses)}</span>
                         </div>
                         <div className="detail-row">
-                          <span>Available Budget:</span>
+                          <span>Available to Spend:</span>
                           <span>{formatCurrency(availableBudget)}</span>
                         </div>
                       </div>
@@ -434,7 +434,7 @@ export const SavingsTracker: React.FC<SavingsTrackerProps> = ({
                   {!isPast && !isCurrent && (
                     <div className="savings-future-info">
                       <p>
-                        <strong>Available for Expenses:</strong><br />
+                        <strong>Available to Spend:</strong><br />
                         {formatCurrency(availableBudget)}
                       </p>
                     </div>
