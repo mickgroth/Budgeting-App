@@ -21,8 +21,14 @@ export const HistoricExpenses: React.FC<HistoricExpensesProps> = ({
   );
 
   const formatMonthDisplay = (month: string): string => {
-    const date = new Date(month + '-01');
-    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+    // month is in format YYYY-MM (e.g., "2025-10" for October 2025)
+    const [year, monthNum] = month.split('-');
+    const monthNames = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    const monthIndex = parseInt(monthNum) - 1; // Convert 01-12 to 0-11
+    return `${monthNames[monthIndex]} ${year}`;
   };
 
   const selectedArchive = archives.find(archive => archive.month === selectedMonth);

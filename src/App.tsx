@@ -346,10 +346,14 @@ function App() {
               setShowArchiveModal(false);
               archiveCurrentMonth(month);
               
-              // Format month for display
+              // Format month for display (month is in YYYY-MM format)
               const [year, monthNum] = month.split('-');
-              const date = new Date(parseInt(year), parseInt(monthNum) - 1);
-              const displayMonth = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+              const monthNames = [
+                'January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'
+              ];
+              const monthIndex = parseInt(monthNum) - 1; // Convert 01-12 to 0-11
+              const displayMonth = `${monthNames[monthIndex]} ${year}`;
               
               alert(`✅ ${displayMonth} archived successfully!\n\nYou can now start fresh for the new month.`);
             }}
