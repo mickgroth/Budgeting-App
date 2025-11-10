@@ -152,6 +152,7 @@ function App() {
       <div className="app">
         <div className="container">
           <AddExpenseScreen
+            userId={currentUser.uid}
             categories={budget.categories}
             onAddExpense={handleAddExpense}
             onBack={handleBackToBudget}

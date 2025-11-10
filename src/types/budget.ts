@@ -18,7 +18,7 @@ export interface Expense {
   amount: number;
   description: string;
   date: string; // ISO date string
-  receiptImage?: string; // Base64 data URL of receipt image
+  receiptImage?: string; // Firebase Storage URL or Base64 data URL (for backward compatibility)
 }
 
 /**
