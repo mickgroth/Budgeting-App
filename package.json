@@ -5,11 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "vite build",
+    "type-check": "tsc --noEmit",
     "preview": "vite preview",
     "test": "vitest"
   },
   "dependencies": {
+    "firebase": "^12.5.0",
     "heic2any": "0.0.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

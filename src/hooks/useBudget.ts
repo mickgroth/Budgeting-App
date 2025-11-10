@@ -1,53 +1,121 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Budget, BudgetCategory, Expense, MonthlySavings, LongTermSavingsGoal, CATEGORY_COLORS } from '../types/budget';
 import { generateId } from '../utils/budgetHelpers';
+import { FirebaseService } from '../services/firebaseService';
 
-const STORAGE_KEY = 'budget-app-data';
+// Default initial state
+const defaultBudget: Budget = {
+  totalBudget: 0,
+  categories: [],
+  expenses: [],
+  savings: [],
+  longTermGoals: [],
+};
 
 /**
- * Custom hook for managing budget state with localStorage persistence
+ * Custom hook for managing budget state with Firebase Firestore persistence
  */
 export const useBudget = () => {
-  const [budget, setBudget] = useState<Budget>(() => {
-    // Load from localStorage on initial render
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        
-        // Migration: add expenses, savings, and longTermGoals arrays if they don't exist
-        let longTermGoals = parsed.longTermGoals || [];
-        
-        // Migration: add order field to existing longTermGoals that don't have it
-        longTermGoals = longTermGoals.map((goal: any, index: number) => ({
-          ...goal,
-          order: goal.order !== undefined ? goal.order : index,
-        }));
-        
-        return {
-          ...parsed,
-          expenses: parsed.expenses || [],
-          savings: parsed.savings || [],
-          longTermGoals,
-        };
-      } catch (error) {
-        console.error('Failed to parse stored budget:', error);
-      }
-    }
-    // Default initial state
-    return {
-      totalBudget: 0,
-      categories: [],
-      expenses: [],
-      savings: [],
-      longTermGoals: [],
-    };
-  });
+  const [budget, setBudget] = useState<Budget>(defaultBudget);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const isInitialized = useRef(false);
+  const isSaving = useRef(false);
 
-  // Save to localStorage whenever budget changes
+  // Initialize Firebase connection and load data
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(budget));
-  }, [budget]);
+    if (isInitialized.current) return;
+    isInitialized.current = true;
+
+    const loadInitialData = async () => {
+      try {
+        setIsLoading(true);
+        const firebaseBudget = await FirebaseService.getBudget();
+        
+        if (firebaseBudget) {
+          // Migration: ensure all required fields exist
+          let longTermGoals = firebaseBudget.longTermGoals || [];
+          longTermGoals = longTermGoals.map((goal: any, index: number) => ({
+            ...goal,
+            order: goal.order !== undefined ? goal.order : index,
+          }));
+          
+          setBudget({
+            totalBudget: firebaseBudget.totalBudget || 0,
+            categories: firebaseBudget.categories || [],
+            expenses: firebaseBudget.expenses || [],
+            savings: firebaseBudget.savings || [],
+            longTermGoals,
+          });
+        } else {
+          // No data in Firebase, initialize with default
+          await FirebaseService.saveBudget(defaultBudget);
+          setBudget(defaultBudget);
+        }
+      } catch (err) {
+        console.error('Error loading budget from Firebase:', err);
+        setError('Failed to load budget data. Please refresh the page.');
+        // Fallback to default budget
+        setBudget(defaultBudget);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadInitialData();
+
+    // Subscribe to real-time updates
+    const unsubscribe = FirebaseService.subscribeToBudget(
+      (updatedBudget) => {
+        if (updatedBudget && !isSaving.current) {
+          // Migration: ensure all required fields exist
+          let longTermGoals = updatedBudget.longTermGoals || [];
+          longTermGoals = longTermGoals.map((goal: any, index: number) => ({
+            ...goal,
+            order: goal.order !== undefined ? goal.order : index,
+          }));
+          
+          setBudget({
+            totalBudget: updatedBudget.totalBudget || 0,
+            categories: updatedBudget.categories || [],
+            expenses: updatedBudget.expenses || [],
+            savings: updatedBudget.savings || [],
+            longTermGoals,
+          });
+        }
+      },
+      (err) => {
+        console.error('Error in Firebase subscription:', err);
+        setError('Connection error. Changes may not sync.');
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  // Save to Firebase whenever budget changes (debounced)
+  useEffect(() => {
+    if (!isInitialized.current || isLoading) return;
+
+    const saveToFirebase = async () => {
+      try {
+        isSaving.current = true;
+        await FirebaseService.saveBudget(budget);
+        setError(null);
+      } catch (err) {
+        console.error('Error saving budget to Firebase:', err);
+        setError('Failed to save changes. Please try again.');
+      } finally {
+        isSaving.current = false;
+      }
+    };
+
+    // Debounce saves to avoid too many writes
+    const timeoutId = setTimeout(saveToFirebase, 500);
+    return () => clearTimeout(timeoutId);
+  }, [budget, isLoading]);
 
   /**
    * Update the total budget amount
@@ -449,6 +517,8 @@ export const useBudget = () => {
 
   return {
     budget,
+    isLoading,
+    error,
     setTotalBudget,
     addCategory,
     updateCategory,
