@@ -53,6 +53,7 @@ export const useBudget = (userId: string | null) => {
             expenses: firebaseBudget.expenses || [],
             savings: firebaseBudget.savings || [],
             longTermGoals,
+            monthlyArchives: firebaseBudget.monthlyArchives || [], // Add for backward compatibility
           });
         } else {
           // No data in Firebase, initialize with default
@@ -89,6 +90,7 @@ export const useBudget = (userId: string | null) => {
             expenses: updatedBudget.expenses || [],
             savings: updatedBudget.savings || [],
             longTermGoals,
+            monthlyArchives: updatedBudget.monthlyArchives || [], // Add for backward compatibility
           });
         }
       },
@@ -556,8 +558,11 @@ export const useBudget = (userId: string | null) => {
       // Use provided month or current month
       const month = monthToArchive || new Date().toISOString().slice(0, 7); // YYYY-MM
       
+      // Ensure monthlyArchives exists (for backward compatibility with existing data)
+      const existingArchives = prev.monthlyArchives || [];
+      
       // Check if this month is already archived
-      const alreadyArchived = prev.monthlyArchives.some(archive => archive.month === month);
+      const alreadyArchived = existingArchives.some(archive => archive.month === month);
       if (alreadyArchived) {
         console.warn(`Month ${month} is already archived`);
         return prev;
@@ -591,7 +596,7 @@ export const useBudget = (userId: string | null) => {
         ...prev,
         expenses: [], // Clear current expenses
         categories: prev.categories.map(cat => ({ ...cat, spent: 0 })), // Reset spending
-        monthlyArchives: [...prev.monthlyArchives, archive].sort((a, b) => 
+        monthlyArchives: [...existingArchives, archive].sort((a, b) => 
           b.month.localeCompare(a.month) // Sort newest first
         ),
       };
@@ -604,7 +609,7 @@ export const useBudget = (userId: string | null) => {
   const deleteArchive = (archiveId: string) => {
     setBudget((prev) => ({
       ...prev,
-      monthlyArchives: prev.monthlyArchives.filter(archive => archive.id !== archiveId),
+      monthlyArchives: (prev.monthlyArchives || []).filter(archive => archive.id !== archiveId),
     }));
   };
 
