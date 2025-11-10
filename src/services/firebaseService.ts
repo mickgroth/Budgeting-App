@@ -40,9 +40,16 @@ export class FirebaseService {
   static async saveBudget(budget: Budget): Promise<void> {
     try {
       const docRef = doc(db, 'budget', BUDGET_DOC_ID);
+      console.log('Saving budget to Firestore:', {
+        categories: budget.categories.length,
+        expenses: budget.expenses.length,
+        savings: budget.savings.length,
+        longTermGoals: budget.longTermGoals.length
+      });
       await setDoc(docRef, budget, { merge: true });
+      console.log('Budget saved successfully to Firestore');
     } catch (error) {
-      console.error('Error saving budget:', error);
+      console.error('Error saving budget to Firestore:', error);
       throw error;
     }
   }
