@@ -12,6 +12,16 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
+// Check if Firebase config is missing (common in deployment)
+if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+  console.error('Firebase configuration is missing! Please check your environment variables.');
+  console.error('Missing values:', {
+    apiKey: !firebaseConfig.apiKey,
+    projectId: !firebaseConfig.projectId,
+    authDomain: !firebaseConfig.authDomain,
+  });
+}
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 

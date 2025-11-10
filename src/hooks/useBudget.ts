@@ -15,7 +15,7 @@ const defaultBudget: Budget = {
 /**
  * Custom hook for managing budget state with Firebase Firestore persistence
  */
-export const useBudget = () => {
+export const useBudget = (userId: string | null) => {
   const [budget, setBudget] = useState<Budget>(defaultBudget);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,13 +24,18 @@ export const useBudget = () => {
 
   // Initialize Firebase connection and load data
   useEffect(() => {
+    if (!userId) {
+      setIsLoading(false);
+      return;
+    }
+
     if (isInitialized.current) return;
     isInitialized.current = true;
 
     const loadInitialData = async () => {
       try {
         setIsLoading(true);
-        const firebaseBudget = await FirebaseService.getBudget();
+        const firebaseBudget = await FirebaseService.getBudget(userId);
         
         if (firebaseBudget) {
           // Migration: ensure all required fields exist
@@ -49,7 +54,7 @@ export const useBudget = () => {
           });
         } else {
           // No data in Firebase, initialize with default
-          await FirebaseService.saveBudget(defaultBudget);
+          await FirebaseService.saveBudget(userId, defaultBudget);
           setBudget(defaultBudget);
         }
       } catch (err) {
@@ -66,6 +71,7 @@ export const useBudget = () => {
 
     // Subscribe to real-time updates
     const unsubscribe = FirebaseService.subscribeToBudget(
+      userId,
       (updatedBudget) => {
         if (updatedBudget && !isSaving.current) {
           // Migration: ensure all required fields exist
@@ -93,16 +99,16 @@ export const useBudget = () => {
     return () => {
       unsubscribe();
     };
-  }, []);
+  }, [userId]);
 
   // Save to Firebase whenever budget changes (debounced)
   useEffect(() => {
-    if (!isInitialized.current || isLoading) return;
+    if (!userId || !isInitialized.current || isLoading) return;
 
     const saveToFirebase = async () => {
       try {
         isSaving.current = true;
-        await FirebaseService.saveBudget(budget);
+        await FirebaseService.saveBudget(userId, budget);
         setError(null);
       } catch (err) {
         console.error('Error saving budget to Firebase:', err);
@@ -115,7 +121,7 @@ export const useBudget = () => {
     // Debounce saves to avoid too many writes
     const timeoutId = setTimeout(saveToFirebase, 500);
     return () => clearTimeout(timeoutId);
-  }, [budget, isLoading]);
+  }, [budget, isLoading, userId]);
 
   /**
    * Update the total budget amount
