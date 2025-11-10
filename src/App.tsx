@@ -372,9 +372,11 @@ function App() {
         {showArchiveModal && (
           <ArchiveMonthModal
             expenseCount={budget.expenses.length}
-            onConfirm={(month) => {
+            currentBudget={budget.totalBudget}
+            existingArchives={budget.monthlyArchives}
+            onConfirm={(month, updateBudget) => {
               setShowArchiveModal(false);
-              archiveCurrentMonth(month);
+              archiveCurrentMonth(month, updateBudget);
               
               // Format month for display (month is in YYYY-MM format)
               const [year, monthNum] = month.split('-');

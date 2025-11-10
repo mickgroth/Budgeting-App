@@ -1,8 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { MonthlyArchive } from '../types/budget';
+import { formatCurrency } from '../utils/budgetHelpers';
 
 interface ArchiveMonthModalProps {
   expenseCount: number;
-  onConfirm: (month: string) => void;
+  currentBudget: number;
+  existingArchives: MonthlyArchive[];
+  onConfirm: (month: string, updateBudget: boolean) => void;
   onCancel: () => void;
 }
 
@@ -11,6 +15,8 @@ interface ArchiveMonthModalProps {
  */
 export const ArchiveMonthModal: React.FC<ArchiveMonthModalProps> = ({
   expenseCount,
+  currentBudget,
+  existingArchives,
   onConfirm,
   onCancel,
 }) => {
@@ -20,6 +26,7 @@ export const ArchiveMonthModal: React.FC<ArchiveMonthModalProps> = ({
 
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+  const [updateBudget, setUpdateBudget] = useState(true); // Default to updating budget
 
   // Generate year options (current year and 5 years back)
   const yearOptions = Array.from({ length: 6 }, (_, i) => currentYear - i);
@@ -30,12 +37,23 @@ export const ArchiveMonthModal: React.FC<ArchiveMonthModalProps> = ({
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
-  const handleConfirm = () => {
-    const month = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}`;
-    onConfirm(month);
-  };
-
   const selectedMonthName = monthNames[selectedMonth - 1];
+  const selectedMonthKey = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}`;
+
+  // Check if this month already exists in archives
+  const existingArchive = existingArchives.find(archive => archive.month === selectedMonthKey);
+  const hasExistingArchive = !!existingArchive;
+  const existingBudget = existingArchive?.totalBudget;
+  const budgetChanged = hasExistingArchive && existingBudget !== currentBudget;
+
+  // Reset updateBudget to true when month/year changes
+  useEffect(() => {
+    setUpdateBudget(true);
+  }, [selectedMonth, selectedYear]);
+
+  const handleConfirm = () => {
+    onConfirm(selectedMonthKey, updateBudget);
+  };
 
   return (
     <div className="modal-overlay" onClick={onCancel}>
@@ -98,10 +116,57 @@ export const ArchiveMonthModal: React.FC<ArchiveMonthModalProps> = ({
               <li>✓ Clear current expenses list</li>
               <li>✓ Reset category spending to $0</li>
             </ul>
-            <p className="info-note">
-              💡 If {selectedMonthName} {selectedYear} already has archived expenses, 
-              they will be combined together.
-            </p>
+            
+            {hasExistingArchive && (
+              <div className="existing-archive-warning">
+                <p className="warning-header">⚠️ {selectedMonthName} {selectedYear} already has archived expenses!</p>
+                <p className="warning-subtext">New expenses will be merged with existing ones.</p>
+              </div>
+            )}
+
+            {budgetChanged && (
+              <div className="budget-conflict-section">
+                <p className="conflict-header">💰 Budget Difference Detected:</p>
+                <div className="budget-comparison">
+                  <div className="budget-item">
+                    <span className="budget-label">Existing Budget:</span>
+                    <span className="budget-value old">{formatCurrency(existingBudget!)}</span>
+                  </div>
+                  <div className="budget-item">
+                    <span className="budget-label">Current Budget:</span>
+                    <span className="budget-value new">{formatCurrency(currentBudget)}</span>
+                  </div>
+                </div>
+                
+                <div className="budget-choice">
+                  <p className="choice-question"><strong>Which budget should be saved?</strong></p>
+                  <label className="radio-option">
+                    <input
+                      type="radio"
+                      name="budget-choice"
+                      checked={updateBudget}
+                      onChange={() => setUpdateBudget(true)}
+                    />
+                    <span className="radio-label">
+                      <strong>Update to current budget</strong> ({formatCurrency(currentBudget)})
+                      <small>Use this if your income changed during {selectedMonthName}</small>
+                    </span>
+                  </label>
+                  <label className="radio-option">
+                    <input
+                      type="radio"
+                      name="budget-choice"
+                      checked={!updateBudget}
+                      onChange={() => setUpdateBudget(false)}
+                    />
+                    <span className="radio-label">
+                      <strong>Keep existing budget</strong> ({formatCurrency(existingBudget!)})
+                      <small>Use this to preserve historical accuracy</small>
+                    </span>
+                  </label>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

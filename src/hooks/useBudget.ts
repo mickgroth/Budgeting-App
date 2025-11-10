@@ -554,7 +554,7 @@ export const useBudget = (userId: string | null) => {
    * Creates a snapshot of categories and expenses before clearing
    * If month already exists, merges expenses and updates snapshots
    */
-  const archiveCurrentMonth = (monthToArchive?: string) => {
+  const archiveCurrentMonth = (monthToArchive?: string, updateBudget: boolean = true) => {
     setBudget((prev) => {
       // Use provided month or current month
       const month = monthToArchive || new Date().toISOString().slice(0, 7); // YYYY-MM
@@ -610,7 +610,7 @@ export const useBudget = (userId: string | null) => {
           ...existingArchive,
           expenses: mergedExpenses,
           categorySnapshots: mergedCategorySnapshots,
-          totalBudget: prev.totalBudget, // Use current budget
+          totalBudget: updateBudget ? prev.totalBudget : existingArchive.totalBudget, // Respect user's choice
           totalSpent: mergedTotalSpent,
           archivedDate: new Date().toISOString(), // Update archive date
         };
