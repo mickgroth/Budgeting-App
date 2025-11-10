@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { MonthlyArchive } from '../types/budget';
 import { formatCurrency } from '../utils/budgetHelpers';
+import { LineChart } from './LineChart';
 
 interface MonthlyComparisonProps {
   archives: MonthlyArchive[];
@@ -17,6 +18,8 @@ export const MonthlyComparison: React.FC<MonthlyComparisonProps> = ({
   const [selectedMonths, setSelectedMonths] = useState<string[]>(
     archives.slice(0, Math.min(6, archives.length)).map(a => a.month)
   );
+  const [viewMode, setViewMode] = useState<'table' | 'chart'>('table');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
   const formatMonthDisplay = (month: string): string => {
     const [year, monthNum] = month.split('-');
@@ -86,6 +89,13 @@ export const MonthlyComparison: React.FC<MonthlyComparisonProps> = ({
   // Sort by total spending (highest first)
   categoryData.sort((a, b) => b.total - a.total);
 
+  // Initialize selected categories with top 5 by default
+  React.useEffect(() => {
+    if (selectedCategories.length === 0 && categoryData.length > 0) {
+      setSelectedCategories(categoryData.slice(0, Math.min(5, categoryData.length)).map(c => c.id));
+    }
+  }, [categoryData.length]);
+
   // Calculate totals row
   const monthlyTotals = selectedArchives.map(archive => ({
     month: archive.month,
@@ -102,6 +112,22 @@ export const MonthlyComparison: React.FC<MonthlyComparisonProps> = ({
     const last = monthlySpending[monthlySpending.length - 1].spent; // Last (newest) month
     if (first === 0) return null;
     return ((last - first) / first) * 100;
+  };
+
+  const toggleCategory = (categoryId: string) => {
+    if (selectedCategories.includes(categoryId)) {
+      setSelectedCategories(selectedCategories.filter(id => id !== categoryId));
+    } else {
+      setSelectedCategories([...selectedCategories, categoryId]);
+    }
+  };
+
+  const selectAllCategories = () => {
+    setSelectedCategories(categoryData.map(c => c.id));
+  };
+
+  const clearAllCategories = () => {
+    setSelectedCategories([]);
   };
 
   if (archives.length === 0) {
@@ -162,6 +188,22 @@ export const MonthlyComparison: React.FC<MonthlyComparisonProps> = ({
         </div>
       ) : (
         <>
+          {/* View Mode Toggle */}
+          <div className="view-mode-toggle">
+            <button
+              className={`toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
+              onClick={() => setViewMode('table')}
+            >
+              📊 Table View
+            </button>
+            <button
+              className={`toggle-btn ${viewMode === 'chart' ? 'active' : ''}`}
+              onClick={() => setViewMode('chart')}
+            >
+              📈 Chart View
+            </button>
+          </div>
+
           {/* Summary Stats */}
           <div className="comparison-stats">
             <div className="stat-card">
@@ -182,8 +224,9 @@ export const MonthlyComparison: React.FC<MonthlyComparisonProps> = ({
             </div>
           </div>
 
-          {/* Comparison Table */}
-          <div className="comparison-table-container">
+          {viewMode === 'table' ? (
+            /* Comparison Table */
+            <div className="comparison-table-container">
             <table className="comparison-table">
               <thead>
                 <tr>
@@ -257,6 +300,56 @@ export const MonthlyComparison: React.FC<MonthlyComparisonProps> = ({
               </tbody>
             </table>
           </div>
+          ) : (
+            /* Chart View */
+            <div className="chart-view-container">
+              {/* Category Selection for Chart */}
+              <div className="chart-category-selection">
+                <div className="selection-header">
+                  <h3>Select Categories to Display:</h3>
+                  <div className="selection-actions">
+                    <button className="btn-select-action" onClick={selectAllCategories}>
+                      Select All
+                    </button>
+                    <button className="btn-select-action" onClick={clearAllCategories}>
+                      Clear All
+                    </button>
+                  </div>
+                </div>
+                <div className="category-checkboxes">
+                  {categoryData.map((category) => (
+                    <label key={category.id} className="category-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={selectedCategories.includes(category.id)}
+                        onChange={() => toggleCategory(category.id)}
+                      />
+                      <span
+                        className="checkbox-color-dot"
+                        style={{ backgroundColor: category.color }}
+                      />
+                      <span className="checkbox-label">{category.name}</span>
+                      <span className="checkbox-total">{formatCurrency(category.total)}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Line Chart */}
+              {selectedCategories.length > 0 ? (
+                <div className="line-chart-container">
+                  <LineChart
+                    categories={categoryData.filter(c => selectedCategories.includes(c.id))}
+                    months={selectedArchives.map(a => formatMonthDisplay(a.month))}
+                  />
+                </div>
+              ) : (
+                <div className="empty-state">
+                  <p>Select at least one category to display in the chart</p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Insights */}
           {categoryData.length > 0 && (

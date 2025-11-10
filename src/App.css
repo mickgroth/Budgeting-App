@@ -3492,3 +3492,191 @@ button:active {
     grid-template-columns: 1fr;
   }
 }
+
+/* View Mode Toggle */
+.view-mode-toggle {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+  background: var(--color-card);
+  padding: 0.5rem;
+  border-radius: var(--radius-lg);
+  width: fit-content;
+}
+
+.toggle-btn {
+  background: transparent;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--color-text);
+}
+
+.toggle-btn:hover {
+  background: #F3F4F6;
+}
+
+.toggle-btn.active {
+  background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+/* Chart View Container */
+.chart-view-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.chart-category-selection {
+  background: var(--color-card);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+}
+
+.category-checkboxes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 0.75rem;
+}
+
+.category-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: white;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.category-checkbox:hover {
+  border-color: var(--color-primary);
+  background: #F8FAFC;
+}
+
+.category-checkbox input[type="checkbox"] {
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+}
+
+.checkbox-color-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.checkbox-label {
+  flex: 1;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.checkbox-total {
+  font-size: 0.875rem;
+  color: var(--color-text-light);
+  font-weight: 600;
+}
+
+/* Line Chart */
+.line-chart-container {
+  background: var(--color-card);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+}
+
+.line-chart {
+  width: 100%;
+}
+
+.chart-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.chart-tooltip-container {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.tooltip-category {
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: #F9FAFB;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.tooltip-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tooltip-name {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.tooltip-values {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.tooltip-value {
+  font-size: 0.875rem;
+  color: var(--color-text-light);
+  padding: 0.25rem 0.75rem;
+  background: white;
+  border-radius: var(--radius);
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .view-mode-toggle {
+    width: 100%;
+  }
+
+  .toggle-btn {
+    flex: 1;
+    padding: 0.75rem 1rem;
+  }
+
+  .category-checkboxes {
+    grid-template-columns: 1fr;
+  }
+
+  .line-chart-container {
+    padding: 1rem;
+  }
+
+  .chart-svg {
+    min-height: 300px;
+  }
+
+  .tooltip-values {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .tooltip-value {
+    width: 100%;
+  }
+}
