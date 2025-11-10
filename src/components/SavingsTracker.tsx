@@ -354,8 +354,8 @@ export const SavingsTracker: React.FC<SavingsTrackerProps> = ({
           // Default goal to 0 if no savings entry exists
           const savingsGoal = savingsEntry?.goal || 0;
           const savingsStatus = getSavingsStatus(actualSavings, savingsGoal);
-          // Only show savings info if there are expenses for this month or it's current/past
-          const hasData = monthlyExpenses > 0 || isPast || isCurrent;
+          // Show savings info if there are expenses, it's current/past, OR a savings goal is set
+          const hasData = monthlyExpenses > 0 || isPast || isCurrent || (savingsEntry && savingsGoal > 0);
 
           return (
             <div
@@ -381,7 +381,7 @@ export const SavingsTracker: React.FC<SavingsTrackerProps> = ({
                     </div>
                   )}
 
-                  {hasData && (
+                  {(isPast || isCurrent) && (
                     <>
                       <div className="savings-actual">
                         <span className="label">Actual Savings:</span>
