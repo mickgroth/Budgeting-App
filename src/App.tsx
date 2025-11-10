@@ -8,6 +8,7 @@ import { ExpensesList } from './components/ExpensesList';
 import { ImportBudgetExcel } from './components/ImportBudgetExcel';
 import { SavingsTracker } from './components/SavingsTracker';
 import { HistoricExpenses } from './components/HistoricExpenses';
+import { ArchiveMonthModal } from './components/ArchiveMonthModal';
 import { AuthScreen } from './components/AuthScreen';
 import { UserProfile } from './components/UserProfile';
 import { AuthService } from './services/authService';
@@ -23,6 +24,7 @@ function App() {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [currentView, setCurrentView] = useState<View>('budget');
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
   
   // Listen for authentication state changes
   useEffect(() => {
@@ -269,49 +271,7 @@ function App() {
                   alert('No expenses to archive for this month.');
                   return;
                 }
-                
-                // Get current month as default
-                const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
-                const currentMonthName = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
-                
-                // Ask user to confirm which month to archive
-                const userMonth = prompt(
-                  `📦 Archive Expenses\n\n` +
-                  `Enter the month to archive in format YYYY-MM:\n` +
-                  `(Default: ${currentMonthName})`,
-                  currentMonth
-                );
-                
-                // User cancelled
-                if (userMonth === null) {
-                  return;
-                }
-                
-                // Validate format
-                const monthRegex = /^\d{4}-(0[1-9]|1[0-2])$/;
-                if (!monthRegex.test(userMonth)) {
-                  alert('❌ Invalid format! Please use YYYY-MM (e.g., 2025-01)');
-                  return;
-                }
-                
-                // Format for display
-                const [year, month] = userMonth.split('-');
-                const date = new Date(parseInt(year), parseInt(month) - 1);
-                const displayMonth = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
-                
-                // Final confirmation
-                if (window.confirm(
-                  `Archive all ${budget.expenses.length} expenses for ${displayMonth}?\n\n` +
-                  `This will:\n` +
-                  `✓ Save all current expenses to history\n` +
-                  `✓ Save category spending snapshots\n` +
-                  `✓ Clear current expenses list\n` +
-                  `✓ Reset category spending to $0\n\n` +
-                  `You can view archived data in "Historic Data".`
-                )) {
-                  archiveCurrentMonth(userMonth);
-                  alert(`✅ ${displayMonth} archived successfully!\n\nYou can now start fresh for the new month.`);
-                }
+                setShowArchiveModal(true);
               }}
               disabled={budget.expenses.length === 0}
             >
@@ -376,6 +336,25 @@ function App() {
               </div>
             )}
           </div>
+        )}
+
+        {/* Archive Month Modal */}
+        {showArchiveModal && (
+          <ArchiveMonthModal
+            expenseCount={budget.expenses.length}
+            onConfirm={(month) => {
+              setShowArchiveModal(false);
+              archiveCurrentMonth(month);
+              
+              // Format month for display
+              const [year, monthNum] = month.split('-');
+              const date = new Date(parseInt(year), parseInt(monthNum) - 1);
+              const displayMonth = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+              
+              alert(`✅ ${displayMonth} archived successfully!\n\nYou can now start fresh for the new month.`);
+            }}
+            onCancel={() => setShowArchiveModal(false)}
+          />
         )}
       </div>
     </div>

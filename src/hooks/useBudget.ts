@@ -552,6 +552,7 @@ export const useBudget = (userId: string | null) => {
   /**
    * Archive current month's expenses and reset for new month
    * Creates a snapshot of categories and expenses before clearing
+   * If month already exists, merges expenses and updates snapshots
    */
   const archiveCurrentMonth = (monthToArchive?: string) => {
     setBudget((prev) => {
@@ -562,44 +563,102 @@ export const useBudget = (userId: string | null) => {
       const existingArchives = prev.monthlyArchives || [];
       
       // Check if this month is already archived
-      const alreadyArchived = existingArchives.some(archive => archive.month === month);
-      if (alreadyArchived) {
-        console.warn(`Month ${month} is already archived`);
-        return prev;
+      const existingArchiveIndex = existingArchives.findIndex(archive => archive.month === month);
+      const existingArchive = existingArchiveIndex >= 0 ? existingArchives[existingArchiveIndex] : null;
+      
+      if (existingArchive) {
+        console.log(`Merging expenses into existing archive for ${month}`);
+        
+        // Merge expenses from existing archive with new expenses
+        const mergedExpenses = [...existingArchive.expenses, ...prev.expenses];
+        
+        // Create updated category snapshots by merging spending
+        const categoryMap = new Map();
+        
+        // Start with existing snapshots
+        existingArchive.categorySnapshots.forEach(cat => {
+          categoryMap.set(cat.id, { ...cat });
+        });
+        
+        // Merge with current categories
+        prev.categories.forEach(cat => {
+          if (categoryMap.has(cat.id)) {
+            // Add current spending to existing
+            const existing = categoryMap.get(cat.id);
+            categoryMap.set(cat.id, {
+              ...existing,
+              spent: existing.spent + cat.spent,
+              allocated: cat.allocated, // Use current allocation
+            });
+          } else {
+            // New category, add it
+            categoryMap.set(cat.id, {
+              id: cat.id,
+              name: cat.name,
+              allocated: cat.allocated,
+              spent: cat.spent,
+              color: cat.color,
+            });
+          }
+        });
+        
+        const mergedCategorySnapshots = Array.from(categoryMap.values());
+        const mergedTotalSpent = mergedExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+        
+        // Update existing archive
+        const updatedArchive: MonthlyArchive = {
+          ...existingArchive,
+          expenses: mergedExpenses,
+          categorySnapshots: mergedCategorySnapshots,
+          totalBudget: prev.totalBudget, // Use current budget
+          totalSpent: mergedTotalSpent,
+          archivedDate: new Date().toISOString(), // Update archive date
+        };
+        
+        // Replace existing archive
+        const updatedArchives = [...existingArchives];
+        updatedArchives[existingArchiveIndex] = updatedArchive;
+        
+        return {
+          ...prev,
+          expenses: [], // Clear current expenses
+          categories: prev.categories.map(cat => ({ ...cat, spent: 0 })), // Reset spending
+          monthlyArchives: updatedArchives.sort((a, b) => 
+            b.month.localeCompare(a.month) // Sort newest first
+          ),
+        };
+      } else {
+        // Create new archive
+        const categorySnapshots = prev.categories.map(cat => ({
+          id: cat.id,
+          name: cat.name,
+          allocated: cat.allocated,
+          spent: cat.spent,
+          color: cat.color,
+        }));
+        
+        const totalSpent = prev.expenses.reduce((sum, exp) => sum + exp.amount, 0);
+        
+        const archive: MonthlyArchive = {
+          id: generateId(),
+          month,
+          expenses: [...prev.expenses], // Clone current expenses
+          categorySnapshots,
+          totalBudget: prev.totalBudget,
+          totalSpent,
+          archivedDate: new Date().toISOString(),
+        };
+        
+        // Add archive and clear current expenses, reset category spending
+        return {
+          ...prev,
+          expenses: [], // Clear current expenses
+          categories: prev.categories.map(cat => ({ ...cat, spent: 0 })), // Reset spending
+          monthlyArchives: [...existingArchives, archive].sort((a, b) => 
+            b.month.localeCompare(a.month) // Sort newest first
+          ),
+        };
       }
-      
-      // Create category snapshots with their current spending
-      const categorySnapshots = prev.categories.map(cat => ({
-        id: cat.id,
-        name: cat.name,
-        allocated: cat.allocated,
-        spent: cat.spent,
-        color: cat.color,
-      }));
-      
-      // Calculate total spent
-      const totalSpent = prev.expenses.reduce((sum, exp) => sum + exp.amount, 0);
-      
-      // Create archive
-      const archive: MonthlyArchive = {
-        id: generateId(),
-        month,
-        expenses: [...prev.expenses], // Clone current expenses
-        categorySnapshots,
-        totalBudget: prev.totalBudget,
-        totalSpent,
-        archivedDate: new Date().toISOString(),
-      };
-      
-      // Add archive and clear current expenses, reset category spending
-      return {
-        ...prev,
-        expenses: [], // Clear current expenses
-        categories: prev.categories.map(cat => ({ ...cat, spent: 0 })), // Reset spending
-        monthlyArchives: [...existingArchives, archive].sort((a, b) => 
-          b.month.localeCompare(a.month) // Sort newest first
-        ),
-      };
     });
   };
 
