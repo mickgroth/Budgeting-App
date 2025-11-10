@@ -265,15 +265,52 @@ function App() {
             <button 
               className="btn-archive"
               onClick={() => {
-                const currentMonth = new Date().toISOString().slice(0, 7);
-                const monthName = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
                 if (budget.expenses.length === 0) {
                   alert('No expenses to archive for this month.');
                   return;
                 }
-                if (window.confirm(`Archive all expenses for ${monthName} and start fresh?`)) {
-                  archiveCurrentMonth(currentMonth);
-                  alert('✅ Month archived successfully!');
+                
+                // Get current month as default
+                const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+                const currentMonthName = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+                
+                // Ask user to confirm which month to archive
+                const userMonth = prompt(
+                  `📦 Archive Expenses\n\n` +
+                  `Enter the month to archive in format YYYY-MM:\n` +
+                  `(Default: ${currentMonthName})`,
+                  currentMonth
+                );
+                
+                // User cancelled
+                if (userMonth === null) {
+                  return;
+                }
+                
+                // Validate format
+                const monthRegex = /^\d{4}-(0[1-9]|1[0-2])$/;
+                if (!monthRegex.test(userMonth)) {
+                  alert('❌ Invalid format! Please use YYYY-MM (e.g., 2025-01)');
+                  return;
+                }
+                
+                // Format for display
+                const [year, month] = userMonth.split('-');
+                const date = new Date(parseInt(year), parseInt(month) - 1);
+                const displayMonth = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+                
+                // Final confirmation
+                if (window.confirm(
+                  `Archive all ${budget.expenses.length} expenses for ${displayMonth}?\n\n` +
+                  `This will:\n` +
+                  `✓ Save all current expenses to history\n` +
+                  `✓ Save category spending snapshots\n` +
+                  `✓ Clear current expenses list\n` +
+                  `✓ Reset category spending to $0\n\n` +
+                  `You can view archived data in "Historic Data".`
+                )) {
+                  archiveCurrentMonth(userMonth);
+                  alert(`✅ ${displayMonth} archived successfully!\n\nYou can now start fresh for the new month.`);
                 }
               }}
               disabled={budget.expenses.length === 0}
