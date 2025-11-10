@@ -361,7 +361,8 @@ export const useBudget = (userId: string | null) => {
       });
 
       const totalSpent = monthExpenses.reduce((sum, exp) => sum + exp.amount, 0);
-      const actualSavings = Math.max(0, prev.totalBudget - savingsEntry.goal - totalSpent);
+      // Actual savings = Budget - Spent (regardless of savings goal)
+      const actualSavings = Math.max(0, prev.totalBudget - totalSpent);
 
       const updatedSavings = prev.savings.map((s) =>
         s.month === month ? { ...s, actual: actualSavings } : s
