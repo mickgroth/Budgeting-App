@@ -228,10 +228,11 @@ export const useBudget = (userId: string | null) => {
       const expenseToUpdate = prev.expenses.find((exp) => exp.id === expenseId);
       if (!expenseToUpdate) return prev;
 
-      // Check if changing from recurring to non-recurring
+      // Check if changing from recurring to non-recurring, or marking as recurring
       const wasRecurring = expenseToUpdate.isRecurring === true;
       const willBeRecurring = updates.isRecurring === true;
       const isUnmarkingRecurring = wasRecurring && !willBeRecurring;
+      const isMarkingRecurring = !wasRecurring && willBeRecurring;
 
       // Get current month
       const currentDate = new Date();
@@ -261,14 +262,49 @@ export const useBudget = (userId: string | null) => {
           }
         }
       }
+      
+      // If marking as recurring, find which archive month this expense came from (if any)
+      // Otherwise, treat current month as the source
+      let sourceMonthForRecurring: string | null = null;
+      if (isMarkingRecurring) {
+        const sortedArchives = [...(prev.monthlyArchives || [])].sort((a, b) => 
+          a.month.localeCompare(b.month)
+        );
+        
+        // Look for the earliest archive month that has this expense (even if not recurring)
+        for (const archive of sortedArchives) {
+          const matchingExpense = archive.expenses.find(exp =>
+            exp.description === expenseToUpdate.description &&
+            exp.categoryId === expenseToUpdate.categoryId &&
+            exp.amount === expenseToUpdate.amount
+          );
+          
+          if (matchingExpense) {
+            sourceMonthForRecurring = archive.month;
+            break;
+          }
+        }
+        
+        // If not found in archives, use current month as source
+        if (!sourceMonthForRecurring) {
+          sourceMonthForRecurring = currentMonthStr;
+        }
+      }
 
-      // Generate months to remove from if unmarking recurring
+      // Generate FOLLOWING months to remove from if unmarking recurring
+      // Note: We exclude the archive month itself - we only affect FOLLOWING months
       const monthsToRemoveFrom: string[] = [];
       if (isUnmarkingRecurring && archiveMonth) {
         const [archiveYear, archiveMonthNum] = archiveMonth.split('-').map(Number);
+        // Start from the month AFTER the archive month
         let year = archiveYear;
-        let month = archiveMonthNum;
+        let month = archiveMonthNum + 1;
+        if (month > 12) {
+          month = 1;
+          year++;
+        }
         
+        // Generate all months from archive+1 to current month (inclusive)
         while (true) {
           const monthStr = `${year}-${String(month).padStart(2, '0')}`;
           monthsToRemoveFrom.push(monthStr);
@@ -290,14 +326,11 @@ export const useBudget = (userId: string | null) => {
         exp.id === expenseId ? updatedExpense : exp
       );
 
-      // If unmarking recurring, remove matching expenses from archives
+      // If unmarking recurring, remove matching expenses from FOLLOWING months in archives
       let updatedArchives = prev.monthlyArchives || [];
       if (isUnmarkingRecurring && archiveMonth) {
         updatedArchives = updatedArchives.map((archive) => {
-          // Skip the original archive month (we'll keep the expense there, just unmark it)
-          if (archive.month === archiveMonth) return archive;
-          
-          // Remove matching recurring expenses from other months
+          // Remove matching recurring expenses from FOLLOWING months only (not the archive month itself)
           if (monthsToRemoveFrom.includes(archive.month)) {
             const expensesToKeep = archive.expenses.filter(exp => 
               !(exp.isRecurring === true &&
@@ -333,15 +366,138 @@ export const useBudget = (userId: string | null) => {
         });
       }
 
+      // If marking as recurring, populate for all months from source month to current month
+      let finalArchives = updatedArchives;
+      let finalExpenses = updatedExpenses;
+      let finalCategories = prev.categories;
+      
+      if (isMarkingRecurring && sourceMonthForRecurring) {
+        const [sourceYear, sourceMonthNum] = sourceMonthForRecurring.split('-').map(Number);
+        
+        // Generate all months from source month to current month (inclusive)
+        // This includes the source month itself, but we'll exclude it when populating
+        const monthsToPopulate: string[] = [];
+        let year = sourceYear;
+        let month = sourceMonthNum;
+        
+        while (true) {
+          const monthStr = `${year}-${String(month).padStart(2, '0')}`;
+          monthsToPopulate.push(monthStr);
+          
+          // Stop if we've reached the current month
+          if (monthStr === currentMonthStr) break;
+          
+          // Move to next month
+          month++;
+          if (month > 12) {
+            month = 1;
+            year++;
+          }
+        }
+        
+        // If source month is current month, we don't need to populate for other months
+        // (it will populate when archived via archiveCurrentMonth)
+        // But we still need to continue with the rest of the logic to update categories
+        const shouldPopulateOtherMonths = sourceMonthForRecurring !== currentMonthStr;
+        
+        // Populate for archived FOLLOWING months (excluding the source month)
+        // monthsToPopulate includes the source month, so we need to exclude it
+        if (shouldPopulateOtherMonths) {
+          finalArchives = updatedArchives.map(archive => {
+            // Skip if not in range or is the source month
+            if (!monthsToPopulate.includes(archive.month) || archive.month === sourceMonthForRecurring) {
+              return archive;
+            }
+            
+            // Check if expense already exists in this archive
+            const expenseExists = archive.expenses.some(exp => 
+              exp.description === updatedExpense.description && 
+              exp.categoryId === updatedExpense.categoryId &&
+              exp.amount === updatedExpense.amount
+            );
+            
+            if (expenseExists) return archive; // Don't duplicate
+            
+            // Add the recurring expense to this archive
+            const [year, month] = archive.month.split('-').map(Number);
+            const archiveDate = new Date(year, month - 1, 1);
+            
+            const newExpense: Expense = {
+              ...updatedExpense,
+              id: generateId(),
+              date: archiveDate.toISOString(),
+              receiptImage: undefined,
+              isRecurring: true,
+            };
+            
+            // Recalculate category spending
+            const categoryMap = new Map<string, number>();
+            [...archive.expenses, newExpense].forEach(exp => {
+              const current = categoryMap.get(exp.categoryId) || 0;
+              categoryMap.set(exp.categoryId, current + exp.amount);
+            });
+            
+            const updatedCategorySnapshots = archive.categorySnapshots.map(cat => ({
+              ...cat,
+              spent: categoryMap.get(cat.id) || cat.spent,
+            }));
+            
+            const newTotalSpent = [...archive.expenses, newExpense].reduce((sum, exp) => sum + exp.amount, 0);
+            
+            return {
+              ...archive,
+              expenses: [...archive.expenses, newExpense],
+              categorySnapshots: updatedCategorySnapshots,
+              totalSpent: newTotalSpent,
+            };
+          });
+        }
+        
+        // Populate for current month if source month is before current month
+        if (shouldPopulateOtherMonths && sourceMonthForRecurring < currentMonthStr) {
+          // Check if expense already exists in current expenses
+          const expenseExists = finalExpenses.some(exp => 
+            exp.description === updatedExpense.description && 
+            exp.categoryId === updatedExpense.categoryId &&
+            exp.amount === updatedExpense.amount
+          );
+          
+          if (!expenseExists) {
+            // Add to current month expenses
+            const newExpense: Expense = {
+              ...updatedExpense,
+              id: generateId(),
+              date: new Date().toISOString(),
+              receiptImage: undefined,
+              isRecurring: true,
+            };
+            
+            finalExpenses = [...finalExpenses, newExpense];
+            
+            // Update category spending
+            const categorySpending = new Map<string, number>();
+            finalExpenses.forEach(exp => {
+              const current = categorySpending.get(exp.categoryId) || 0;
+              categorySpending.set(exp.categoryId, current + exp.amount);
+            });
+            
+            finalCategories = prev.categories.map(cat => {
+              const spent = categorySpending.get(cat.id) || 0;
+              return { ...cat, spent };
+            });
+          }
+        }
+      }
+
       // Recalculate spent for both old and new categories (if category changed)
       const affectedCategoryIds = new Set([
         expenseToUpdate.categoryId,
         updatedExpense.categoryId,
       ]);
 
-      const updatedCategories = prev.categories.map((cat) => {
+      const updatedCategories = finalCategories.map((cat) => {
         if (affectedCategoryIds.has(cat.id)) {
-          const categoryExpenses = updatedExpenses.filter(
+          const categoryExpenses = finalExpenses.filter(
             (exp) => exp.categoryId === cat.id
           );
           const newSpent = categoryExpenses.reduce((sum, exp) => sum + exp.amount, 0);
@@ -352,9 +508,9 @@ export const useBudget = (userId: string | null) => {
 
       return {
         ...prev,
-        expenses: updatedExpenses,
+        expenses: finalExpenses,
         categories: updatedCategories,
-        monthlyArchives: updatedArchives,
+        monthlyArchives: finalArchives,
       };
     });
   };
@@ -855,11 +1011,12 @@ export const useBudget = (userId: string | null) => {
       const originalExpense = originalArchive.expenses.find(exp => exp.id === expenseId);
       if (!originalExpense) return prev;
       
-      // Check if changing from recurring to non-recurring
+      // Check if changing from recurring to non-recurring, or marking as recurring
       const wasRecurring = originalExpense.isRecurring === true;
       const willBeRecurring = updates.isRecurring === true;
       const isUnmarkingRecurring = wasRecurring && !willBeRecurring;
-      
+      const isMarkingRecurring = !wasRecurring && willBeRecurring;
+
       // Get the month of the archive (format: YYYY-MM)
       const archiveMonth = originalArchive.month;
       const [archiveYear, archiveMonthNum] = archiveMonth.split('-').map(Number);
@@ -870,15 +1027,51 @@ export const useBudget = (userId: string | null) => {
       const currentMonth = currentDate.getMonth() + 1; // 1-12
       const currentMonthStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
 
-      // Generate all months from archive month to current month (inclusive)
+      // Generate all FOLLOWING months from archive month to current month (inclusive)
+      // Note: We exclude the archive month itself - we only affect FOLLOWING months
       const monthsToRemoveFrom: string[] = [];
       if (isUnmarkingRecurring) {
+        // Start from the month AFTER the archive month
         let year = archiveYear;
-        let month = archiveMonthNum;
+        let month = archiveMonthNum + 1;
+        if (month > 12) {
+          month = 1;
+          year++;
+        }
         
+        // Generate all months from archive+1 to current month (inclusive)
         while (true) {
           const monthStr = `${year}-${String(month).padStart(2, '0')}`;
           monthsToRemoveFrom.push(monthStr);
+          
+          // Stop if we've reached the current month
+          if (monthStr === currentMonthStr) break;
+          
+          // Move to next month
+          month++;
+          if (month > 12) {
+            month = 1;
+            year++;
+          }
+        }
+      }
+      
+      // Generate FOLLOWING months to populate if marking as recurring
+      // Note: We exclude the archive month itself - we only populate FOLLOWING months
+      const monthsToPopulate: string[] = [];
+      if (isMarkingRecurring) {
+        // Start from the month AFTER the archive month
+        let year = archiveYear;
+        let month = archiveMonthNum + 1;
+        if (month > 12) {
+          month = 1;
+          year++;
+        }
+        
+        // Generate all months from archive+1 to current month (inclusive)
+        while (true) {
+          const monthStr = `${year}-${String(month).padStart(2, '0')}`;
+          monthsToPopulate.push(monthStr);
           
           // Stop if we've reached the current month
           if (monthStr === currentMonthStr) break;
@@ -896,7 +1089,8 @@ export const useBudget = (userId: string | null) => {
       const updatedArchives = (prev.monthlyArchives || []).map((archive) => {
         if (archive.id !== archiveId) {
           // For other archives, remove recurring expenses if unmarking
-          if (isUnmarkingRecurring && monthsToRemoveFrom.includes(archive.month) && archive.month !== archiveMonth) {
+          // Only remove from FOLLOWING months (not the archive month itself)
+          if (isUnmarkingRecurring && monthsToRemoveFrom.includes(archive.month)) {
             // Remove matching recurring expenses (same description, category, amount)
             const expensesToKeep = archive.expenses.filter(exp => 
               !(exp.isRecurring === true &&
@@ -961,16 +1155,18 @@ export const useBudget = (userId: string | null) => {
       });
 
       // Remove from current month expenses if unmarking recurring
+      // Only remove if current month is in the following months (not the archive month itself)
       let newCurrentExpenses = [...prev.expenses];
       let updatedCurrentCategories = [...prev.categories];
       
       if (isUnmarkingRecurring && monthsToRemoveFrom.includes(currentMonthStr)) {
         // Remove matching recurring expenses from current month
+        // Match by description, category, and amount (regardless of isRecurring flag)
         newCurrentExpenses = prev.expenses.filter(exp => 
-          !(exp.isRecurring === true &&
-            exp.description === originalExpense.description &&
+          !(exp.description === originalExpense.description &&
             exp.categoryId === originalExpense.categoryId &&
-            exp.amount === originalExpense.amount)
+            exp.amount === originalExpense.amount &&
+            exp.isRecurring === true) // Only remove if it's marked as recurring
         );
         
         // Recalculate category spending for current month
@@ -985,12 +1181,108 @@ export const useBudget = (userId: string | null) => {
           return { ...cat, spent };
         });
       }
+      
+      // If marking as recurring, populate for all months from archive month to current month
+      let finalArchives = updatedArchives;
+      let finalExpenses = newCurrentExpenses;
+      let finalCategories = updatedCurrentCategories;
+      
+      if (isMarkingRecurring && monthsToPopulate.length > 0) {
+        // Get the updated expense from the archive we just updated
+        const updatedArchive = updatedArchives.find(a => a.id === archiveId);
+        const updatedExpense = updatedArchive?.expenses.find(exp => exp.id === expenseId) || { ...originalExpense, ...updates };
+        
+        // Populate for archived FOLLOWING months (excluding the source archive month)
+        finalArchives = updatedArchives.map(archive => {
+          // Skip if not in range (monthsToPopulate only contains following months, not archive month)
+          if (!monthsToPopulate.includes(archive.month)) {
+            return archive;
+          }
+          
+          // Check if expense already exists in this archive
+          const expenseExists = archive.expenses.some(exp => 
+            exp.description === updatedExpense.description && 
+            exp.categoryId === updatedExpense.categoryId &&
+            exp.amount === updatedExpense.amount
+          );
+          
+          if (expenseExists) return archive; // Don't duplicate
+          
+          // Add the recurring expense to this archive
+          const [year, month] = archive.month.split('-').map(Number);
+          const archiveDate = new Date(year, month - 1, 1);
+          
+          const newExpense: Expense = {
+            ...updatedExpense,
+            id: generateId(),
+            date: archiveDate.toISOString(),
+            receiptImage: undefined,
+            isRecurring: true,
+          };
+          
+          // Recalculate category spending
+          const categoryMap = new Map<string, number>();
+          [...archive.expenses, newExpense].forEach(exp => {
+            const current = categoryMap.get(exp.categoryId) || 0;
+            categoryMap.set(exp.categoryId, current + exp.amount);
+          });
+          
+          const updatedCategorySnapshots = archive.categorySnapshots.map(cat => ({
+            ...cat,
+            spent: categoryMap.get(cat.id) || cat.spent,
+          }));
+          
+          const newTotalSpent = [...archive.expenses, newExpense].reduce((sum, exp) => sum + exp.amount, 0);
+          
+          return {
+            ...archive,
+            expenses: [...archive.expenses, newExpense],
+            categorySnapshots: updatedCategorySnapshots,
+            totalSpent: newTotalSpent,
+          };
+        });
+        
+        // Populate for current month if there are months to populate (archive month is before current month)
+        if (monthsToPopulate.length > 0 && monthsToPopulate.includes(currentMonthStr)) {
+          // Check if expense already exists in current expenses
+          const expenseExists = finalExpenses.some(exp => 
+            exp.description === updatedExpense.description && 
+            exp.categoryId === updatedExpense.categoryId &&
+            exp.amount === updatedExpense.amount
+          );
+          
+          if (!expenseExists) {
+            // Add to current month expenses
+            const newExpense: Expense = {
+              ...updatedExpense,
+              id: generateId(),
+              date: new Date().toISOString(),
+              receiptImage: undefined,
+              isRecurring: true,
+            };
+            
+            finalExpenses = [...finalExpenses, newExpense];
+            
+            // Update category spending
+            const categorySpending = new Map<string, number>();
+            finalExpenses.forEach(exp => {
+              const current = categorySpending.get(exp.categoryId) || 0;
+              categorySpending.set(exp.categoryId, current + exp.amount);
+            });
+            
+            finalCategories = prev.categories.map(cat => {
+              const spent = categorySpending.get(cat.id) || 0;
+              return { ...cat, spent };
+            });
+          }
+        }
+      }
 
       return {
         ...prev,
-        expenses: newCurrentExpenses,
-        categories: updatedCurrentCategories,
-        monthlyArchives: updatedArchives,
+        expenses: finalExpenses,
+        categories: finalCategories,
+        monthlyArchives: finalArchives,
       };
     });
   };
@@ -1156,14 +1448,15 @@ export const useBudget = (userId: string | null) => {
         };
       });
 
-      // Populate for current month if it's in the range and not the archive month
+      // Populate for current month if it's after the archive month
       let finalArchivesWithCurrent = [...finalArchives];
       const currentMonthArchive = finalArchivesWithCurrent.find(a => a.month === currentMonthStr);
       let newCurrentExpenses = [...prev.expenses];
       let updatedCurrentCategories = [...prev.categories];
       
-      // Check if current month should be populated (it's in the range and not the archive month)
-      const shouldPopulateCurrentMonth = monthsToPopulate.includes(currentMonthStr) && currentMonthStr !== archiveMonth;
+      // Check if current month should be populated (it's after the archive month)
+      // Compare months: if currentMonthStr > archiveMonth, we should populate
+      const shouldPopulateCurrentMonth = currentMonthStr > archiveMonth;
       
       if (shouldPopulateCurrentMonth) {
         if (currentMonthArchive) {
@@ -1215,15 +1508,26 @@ export const useBudget = (userId: string | null) => {
           }
         } else {
           // Current month is not archived, add to current expenses
-          // Check if expense already exists in current expenses
-          const expenseExists = prev.expenses.some(exp => 
+          // Check if expense already exists in current expenses (but not marked as recurring)
+          const existingExpenseIndex = prev.expenses.findIndex(exp => 
             exp.description === expense.description && 
             exp.categoryId === expense.categoryId &&
             exp.amount === expense.amount
           );
           
-          if (!expenseExists) {
-            // Add to current month expenses
+          if (existingExpenseIndex >= 0) {
+            // Expense exists - mark it as recurring if it's not already
+            const existingExpense = prev.expenses[existingExpenseIndex];
+            if (!existingExpense.isRecurring) {
+              newCurrentExpenses = prev.expenses.map((exp, idx) =>
+                idx === existingExpenseIndex ? { ...exp, isRecurring: true } : exp
+              );
+              
+              // Category spending doesn't change, just the recurring flag
+              updatedCurrentCategories = prev.categories;
+            }
+          } else {
+            // Expense doesn't exist - add it as recurring
             const newExpense: Expense = {
               ...expense,
               id: generateId(),
