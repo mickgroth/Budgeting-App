@@ -199,10 +199,14 @@ function App() {
         <div className="container">
           <HistoricExpenses
             archives={budget.monthlyArchives}
+            categories={budget.categories}
             onDeleteArchive={deleteArchive}
             onUpdateArchivedExpense={updateArchivedExpense}
             onDeleteArchivedExpense={deleteArchivedExpense}
             onMarkExpenseAsRecurring={markExpenseAsRecurring}
+            onUpdateCategory={updateCategory}
+            onDeleteCategory={deleteCategory}
+            onAddCategory={addCategory}
             onBack={() => setCurrentView('budget')}
           />
         </div>

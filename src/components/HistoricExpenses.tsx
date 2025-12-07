@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
-import { MonthlyArchive, Expense } from '../types/budget';
+import { MonthlyArchive, Expense, BudgetCategory } from '../types/budget';
 import { formatCurrency } from '../utils/budgetHelpers';
+import { CategoryCard } from './CategoryCard';
+import { AddCategoryForm } from './AddCategoryForm';
 
 interface HistoricExpensesProps {
   archives: MonthlyArchive[];
+  categories: BudgetCategory[];
   onDeleteArchive: (archiveId: string) => void;
   onUpdateArchivedExpense: (
     archiveId: string,
@@ -12,6 +15,9 @@ interface HistoricExpensesProps {
   ) => void;
   onDeleteArchivedExpense: (archiveId: string, expenseId: string) => void;
   onMarkExpenseAsRecurring: (archiveId: string, expenseId: string) => void;
+  onUpdateCategory: (id: string, updates: Partial<Omit<BudgetCategory, 'id'>>) => void;
+  onDeleteCategory: (id: string) => void;
+  onAddCategory: (name: string, allocated: number) => void;
   onBack: () => void;
 }
 
@@ -20,10 +26,14 @@ interface HistoricExpensesProps {
  */
 export const HistoricExpenses: React.FC<HistoricExpensesProps> = ({
   archives,
+  categories,
   onDeleteArchive,
   onUpdateArchivedExpense,
   onDeleteArchivedExpense,
   onMarkExpenseAsRecurring,
+  onUpdateCategory,
+  onDeleteCategory,
+  onAddCategory,
   onBack,
 }) => {
   const [selectedMonth, setSelectedMonth] = useState<string>(
@@ -53,12 +63,19 @@ export const HistoricExpenses: React.FC<HistoricExpensesProps> = ({
     setEditingExpense(expense);
     setEditAmount(expense.amount.toString());
     setEditDescription(expense.description);
-    setEditCategoryId(expense.categoryId);
+    // If the expense's category doesn't exist in current categories, use the first category as default
+    const categoryExists = categories.some(cat => cat.id === expense.categoryId);
+    setEditCategoryId(categoryExists ? expense.categoryId : (categories.length > 0 ? categories[0].id : ''));
     setEditIsRecurring(expense.isRecurring || false);
   };
 
   const handleSaveEdit = () => {
     if (!editingExpense || !selectedArchive) return;
+
+    if (!editCategoryId) {
+      alert('Please select a category');
+      return;
+    }
 
     const amount = parseFloat(editAmount);
     if (isNaN(amount) || amount <= 0) {
@@ -212,9 +229,32 @@ export const HistoricExpenses: React.FC<HistoricExpensesProps> = ({
             </button>
           </div>
 
-          {/* Category Breakdown */}
+          {/* Current Categories Section - Editable */}
+          <div className="categories-section">
+            <div className="section-header">
+              <h3>Budget Categories</h3>
+            </div>
+            <div className="categories-grid">
+              {categories.map((category) => (
+                <CategoryCard
+                  key={category.id}
+                  category={category}
+                  onUpdate={onUpdateCategory}
+                  onDelete={onDeleteCategory}
+                />
+              ))}
+            </div>
+            <AddCategoryForm onAdd={onAddCategory} />
+            {categories.length === 0 && (
+              <div className="empty-state">
+                <p>No categories yet. Add your first category to get started!</p>
+              </div>
+            )}
+          </div>
+
+          {/* Category Breakdown - Archived Month Snapshot */}
           <div className="category-breakdown">
-            <h3>Category Breakdown</h3>
+            <h3>Category Breakdown for {formatMonthDisplay(selectedArchive.month)}</h3>
             <div className="categories-grid">
               {selectedArchive.categorySnapshots.map((category) => {
                 const percentage = category.allocated > 0 
@@ -305,12 +345,17 @@ export const HistoricExpenses: React.FC<HistoricExpensesProps> = ({
                                   value={editCategoryId}
                                   onChange={(e) => setEditCategoryId(e.target.value)}
                                   className="edit-select"
+                                  required
                                 >
-                                  {selectedArchive.categorySnapshots.map((cat) => (
-                                    <option key={cat.id} value={cat.id}>
-                                      {cat.name}
-                                    </option>
-                                  ))}
+                                  {categories.length === 0 ? (
+                                    <option value="">No categories available</option>
+                                  ) : (
+                                    categories.map((cat) => (
+                                      <option key={cat.id} value={cat.id}>
+                                        {cat.name}
+                                      </option>
+                                    ))
+                                  )}
                                 </select>
                               </div>
                             </div>

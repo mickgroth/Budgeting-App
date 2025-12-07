@@ -464,8 +464,24 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  /**
+   * Reset form fields but keep the category selected for convenience
+   */
+  const resetForm = () => {
+    setAmount('');
+    setDescription('');
+    setIsRecurring(false);
+    setReceiptImage(null);
+    setError('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  /**
+   * Save expense and optionally navigate back or reset form
+   */
+  const saveExpense = async (shouldStayOnScreen: boolean = false) => {
     setError('');
 
     const amountNum = parseFloat(amount);
@@ -505,14 +521,29 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({
     try {
       onAddExpense(selectedCategoryId, amountNum, description, receiptStorageUrl, isRecurring);
       
-      // Navigate back to main screen after successful submission
-      onBack();
+      if (shouldStayOnScreen) {
+        // Reset form but keep the category selected
+        resetForm();
+      } else {
+        // Navigate back to main screen after successful submission
+        onBack();
+      }
     } catch (err) {
       console.error('Failed to add expense:', err);
       setError('Failed to add expense. Please try again.');
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await saveExpense(false);
+  };
+
+  const handleSaveAndAddAnother = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    await saveExpense(true);
   };
 
   return (
@@ -692,6 +723,14 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({
           <div className="form-actions-horizontal">
             <button type="submit" className="btn-primary" disabled={isScanning || isUploading}>
               {isUploading ? 'Uploading Receipt...' : 'Add Expense'}
+            </button>
+            <button 
+              type="button" 
+              className="btn-primary btn-save-another" 
+              onClick={handleSaveAndAddAnother}
+              disabled={isScanning || isUploading}
+            >
+              {isUploading ? 'Uploading Receipt...' : 'Save & Add Another'}
             </button>
             <button type="button" className="btn-secondary" onClick={onBack} disabled={isScanning || isUploading}>
               Cancel

@@ -1917,6 +1917,28 @@ button:active {
   background: #2563EB;
 }
 
+.btn-save-another {
+  background: var(--color-primary);
+  color: white;
+  padding: 0.875rem 2rem;
+  font-size: 1rem;
+  flex: 1;
+  border: none;
+  cursor: pointer;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.btn-save-another:hover {
+  background: #2563EB;
+}
+
+.btn-save-another:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .btn-secondary {
   background: var(--color-border);
   color: var(--color-text);
