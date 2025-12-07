@@ -11,6 +11,7 @@ interface HistoricExpensesProps {
     updates: Partial<Omit<Expense, 'id'>>
   ) => void;
   onDeleteArchivedExpense: (archiveId: string, expenseId: string) => void;
+  onMarkExpenseAsRecurring: (archiveId: string, expenseId: string) => void;
   onBack: () => void;
 }
 
@@ -22,6 +23,7 @@ export const HistoricExpenses: React.FC<HistoricExpensesProps> = ({
   onDeleteArchive,
   onUpdateArchivedExpense,
   onDeleteArchivedExpense,
+  onMarkExpenseAsRecurring,
   onBack,
 }) => {
   const [selectedMonth, setSelectedMonth] = useState<string>(
@@ -32,6 +34,7 @@ export const HistoricExpenses: React.FC<HistoricExpensesProps> = ({
   const [editAmount, setEditAmount] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editCategoryId, setEditCategoryId] = useState('');
+  const [editIsRecurring, setEditIsRecurring] = useState(false);
 
   const formatMonthDisplay = (month: string): string => {
     // month is in format YYYY-MM (e.g., "2025-10" for October 2025)
@@ -51,6 +54,7 @@ export const HistoricExpenses: React.FC<HistoricExpensesProps> = ({
     setEditAmount(expense.amount.toString());
     setEditDescription(expense.description);
     setEditCategoryId(expense.categoryId);
+    setEditIsRecurring(expense.isRecurring || false);
   };
 
   const handleSaveEdit = () => {
@@ -71,6 +75,7 @@ export const HistoricExpenses: React.FC<HistoricExpensesProps> = ({
       amount,
       description: editDescription.trim(),
       categoryId: editCategoryId,
+      isRecurring: editIsRecurring,
     });
 
     setEditingExpense(null);
@@ -85,6 +90,20 @@ export const HistoricExpenses: React.FC<HistoricExpensesProps> = ({
     
     if (window.confirm(`Delete expense "${description}"?`)) {
       onDeleteArchivedExpense(selectedArchive.id, expenseId);
+    }
+  };
+
+  const handleMarkAsRecurring = (expenseId: string, description: string) => {
+    if (!selectedArchive) return;
+    
+    if (window.confirm(
+      `Mark "${description}" as recurring?\n\n` +
+      `This will:\n` +
+      `• Mark this expense as recurring in ${formatMonthDisplay(selectedArchive.month)}\n` +
+      `• Add this expense to all consecutive months from ${formatMonthDisplay(selectedArchive.month)} to the current month\n` +
+      `• Add this expense to the current month if not already present`
+    )) {
+      onMarkExpenseAsRecurring(selectedArchive.id, expenseId);
     }
   };
 
@@ -306,6 +325,22 @@ export const HistoricExpenses: React.FC<HistoricExpensesProps> = ({
                                 />
                               </div>
                             </div>
+                            <div className="edit-row">
+                              <div className="edit-field edit-field-full">
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={editIsRecurring}
+                                    onChange={(e) => setEditIsRecurring(e.target.checked)}
+                                    style={{ cursor: 'pointer' }}
+                                  />
+                                  <span>Recurring expense</span>
+                                </label>
+                                <small style={{ display: 'block', marginTop: '0.25rem', color: '#6B7280', fontSize: '0.85rem' }}>
+                                  Will be automatically added to new months
+                                </small>
+                              </div>
+                            </div>
                             <div className="edit-actions">
                               <button className="btn-save-edit" onClick={handleSaveEdit}>
                                 ✓ Save
@@ -330,6 +365,11 @@ export const HistoricExpenses: React.FC<HistoricExpensesProps> = ({
                           <div className="expense-info">
                             <div className="expense-description">
                               {expense.description}
+                              {expense.isRecurring && (
+                                <span className="recurring-indicator" title="Recurring expense">
+                                  🔄
+                                </span>
+                              )}
                               {expense.receiptImage && (
                                 <button
                                   className="receipt-indicator-btn"
@@ -360,6 +400,15 @@ export const HistoricExpenses: React.FC<HistoricExpensesProps> = ({
                           <div className="expense-amount">{formatCurrency(expense.amount)}</div>
                         </div>
                         <div className="expense-actions">
+                          {!expense.isRecurring && (
+                            <button
+                              className="btn-recurring-expense"
+                              onClick={() => handleMarkAsRecurring(expense.id, expense.description)}
+                              title="Mark as recurring"
+                            >
+                              🔄
+                            </button>
+                          )}
                           <button
                             className="btn-edit-expense"
                             onClick={() => handleEdit(expense)}

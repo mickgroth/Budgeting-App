@@ -24,6 +24,7 @@ export const ExpensesList: React.FC<ExpensesListProps> = ({
   const [editAmount, setEditAmount] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editCategoryId, setEditCategoryId] = useState('');
+  const [editIsRecurring, setEditIsRecurring] = useState(false);
 
   const getCategoryName = (categoryId: string): string => {
     const category = categories.find((cat) => cat.id === categoryId);
@@ -51,6 +52,7 @@ export const ExpensesList: React.FC<ExpensesListProps> = ({
     setEditAmount(expense.amount.toString());
     setEditDescription(expense.description);
     setEditCategoryId(expense.categoryId);
+    setEditIsRecurring(expense.isRecurring || false);
   };
 
   const handleSaveEdit = () => {
@@ -71,6 +73,7 @@ export const ExpensesList: React.FC<ExpensesListProps> = ({
       amount,
       description: editDescription.trim(),
       categoryId: editCategoryId,
+      isRecurring: editIsRecurring,
     });
 
     setEditingExpense(null);
@@ -144,111 +147,149 @@ export const ExpensesList: React.FC<ExpensesListProps> = ({
         </div>
       ) : (
         <div className="expenses-table">
-          {sortedExpenses.map((expense) => (
-            <div
-              key={expense.id}
-              className="expense-row"
-              style={{ borderLeftColor: getCategoryColor(expense.categoryId) }}
-            >
-              {editingExpense?.id === expense.id ? (
-                // Edit Mode
-                <div className="expense-edit-form">
-                  <div className="edit-form-group">
-                    <label>Description:</label>
-                    <input
-                      type="text"
-                      value={editDescription}
-                      onChange={(e) => setEditDescription(e.target.value)}
-                      placeholder="Expense description"
-                    />
-                  </div>
-                  <div className="edit-form-group">
-                    <label>Amount:</label>
-                    <input
-                      type="number"
-                      value={editAmount}
-                      onChange={(e) => setEditAmount(e.target.value)}
-                      placeholder="0.00"
-                      min="0"
-                      step="0.01"
-                    />
-                  </div>
-                  <div className="edit-form-group">
-                    <label>Category:</label>
-                    <select
-                      value={editCategoryId}
-                      onChange={(e) => setEditCategoryId(e.target.value)}
-                    >
-                      {categories.map((cat) => (
-                        <option key={cat.id} value={cat.id}>
-                          {cat.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="edit-form-actions">
-                    <button className="btn-save-edit" onClick={handleSaveEdit}>
-                      Save
-                    </button>
-                    <button className="btn-cancel-edit" onClick={handleCancelEdit}>
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                // View Mode
-                <>
-                  <div className="expense-main">
-                    <div className="expense-info">
-                      <div className="expense-description">
-                        {expense.description}
-                        {expense.receiptImage && (
-                          <span className="receipt-indicator" title="Has receipt">
-                            📄
-                          </span>
-                        )}
+          {sortedExpenses.map((expense) => {
+            const isEditing = editingExpense?.id === expense.id;
+
+            if (isEditing) {
+              // Edit mode
+              return (
+                <div
+                  key={expense.id}
+                  className="expense-row-archive expense-row-editing"
+                  style={{ borderLeftColor: getCategoryColor(expense.categoryId) }}
+                >
+                  <div className="expense-edit-form">
+                    <div className="edit-row">
+                      <div className="edit-field">
+                        <label>Amount</label>
+                        <input
+                          type="number"
+                          value={editAmount}
+                          onChange={(e) => setEditAmount(e.target.value)}
+                          step="0.01"
+                          min="0"
+                          className="edit-input"
+                        />
                       </div>
-                      <div className="expense-meta">
-                        <span
-                          className="expense-category"
-                          style={{ color: getCategoryColor(expense.categoryId) }}
+                      <div className="edit-field">
+                        <label>Category</label>
+                        <select
+                          value={editCategoryId}
+                          onChange={(e) => setEditCategoryId(e.target.value)}
+                          className="edit-select"
                         >
-                          {getCategoryName(expense.categoryId)}
-                        </span>
-                        <span className="expense-date">{formatDate(expense.date)}</span>
+                          {categories.map((cat) => (
+                            <option key={cat.id} value={cat.id}>
+                              {cat.name}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     </div>
-                    <div className="expense-amount">{formatCurrency(expense.amount)}</div>
-                  </div>
-                  <div className="expense-actions">
-                    {expense.receiptImage && (
-                      <button
-                        className="btn-view-receipt"
-                        onClick={() => setViewingReceipt(expense)}
-                        title="View receipt"
-                      >
-                        📷
+                    <div className="edit-row">
+                      <div className="edit-field edit-field-full">
+                        <label>Description</label>
+                        <input
+                          type="text"
+                          value={editDescription}
+                          onChange={(e) => setEditDescription(e.target.value)}
+                          className="edit-input"
+                        />
+                      </div>
+                    </div>
+                    <div className="edit-row">
+                      <div className="edit-field edit-field-full">
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={editIsRecurring}
+                            onChange={(e) => setEditIsRecurring(e.target.checked)}
+                            style={{ cursor: 'pointer' }}
+                          />
+                          <span>Recurring expense</span>
+                        </label>
+                        <small style={{ display: 'block', marginTop: '0.25rem', color: '#6B7280', fontSize: '0.85rem' }}>
+                          Will be automatically added to new months
+                        </small>
+                      </div>
+                    </div>
+                    <div className="edit-actions">
+                      <button className="btn-save-edit" onClick={handleSaveEdit}>
+                        ✓ Save
                       </button>
-                    )}
-                    <button
-                      className="btn-edit-expense"
-                      onClick={() => handleEdit(expense)}
-                      title="Edit expense"
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      className="btn-delete-expense"
-                      onClick={() => handleDelete(expense.id, expense.description)}
-                      title="Delete expense"
-                    >
-                      🗑️
-                    </button>
+                      <button className="btn-cancel-edit" onClick={handleCancelEdit}>
+                        ✕ Cancel
+                      </button>
+                    </div>
                   </div>
-                </>
-              )}
-            </div>
-          ))}
+                </div>
+              );
+            }
+
+            // View mode
+            return (
+              <div
+                key={expense.id}
+                className="expense-row-archive"
+                style={{ borderLeftColor: getCategoryColor(expense.categoryId) }}
+              >
+                <div className="expense-main">
+                  <div className="expense-info">
+                    <div className="expense-description">
+                      {expense.description}
+                      {expense.isRecurring && (
+                        <span className="recurring-indicator" title="Recurring expense">
+                          🔄
+                        </span>
+                      )}
+                      {expense.receiptImage && (
+                        <button
+                          className="receipt-indicator-btn"
+                          title="View receipt"
+                          onClick={() => setViewingReceipt(expense)}
+                        >
+                          📄
+                        </button>
+                      )}
+                    </div>
+                    <div className="expense-meta">
+                      <span
+                        className="expense-category"
+                        style={{ color: getCategoryColor(expense.categoryId) }}
+                      >
+                        {getCategoryName(expense.categoryId)}
+                      </span>
+                      <span className="expense-date">
+                        {new Date(expense.date).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="expense-amount">{formatCurrency(expense.amount)}</div>
+                </div>
+                <div className="expense-actions">
+                  <button
+                    className="btn-edit-expense"
+                    onClick={() => handleEdit(expense)}
+                    title="Edit expense"
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    className="btn-delete-expense"
+                    onClick={() => handleDelete(expense.id, expense.description)}
+                    title="Delete expense"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 

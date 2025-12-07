@@ -8,7 +8,7 @@ import { StorageService } from '../services/storageService';
 interface AddExpenseScreenProps {
   userId: string;
   categories: BudgetCategory[];
-  onAddExpense: (categoryId: string, amount: number, description: string, receiptImage?: string) => void;
+  onAddExpense: (categoryId: string, amount: number, description: string, receiptImage?: string, isRecurring?: boolean) => void;
   onBack: () => void;
 }
 
@@ -24,6 +24,7 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [amount, setAmount] = useState<string>('');
   const [description, setDescription] = useState<string>('');
+  const [isRecurring, setIsRecurring] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const [receiptImage, setReceiptImage] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState<boolean>(false);
@@ -502,7 +503,7 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({
     }
 
     try {
-      onAddExpense(selectedCategoryId, amountNum, description, receiptStorageUrl);
+      onAddExpense(selectedCategoryId, amountNum, description, receiptStorageUrl, isRecurring);
       
       // Navigate back to main screen after successful submission
       onBack();
@@ -669,6 +670,23 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({
               required
               disabled={isScanning}
             />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="isRecurring" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+              <input
+                id="isRecurring"
+                type="checkbox"
+                checked={isRecurring}
+                onChange={(e) => setIsRecurring(e.target.checked)}
+                disabled={isScanning}
+                style={{ cursor: 'pointer' }}
+              />
+              <span>Mark as recurring expense</span>
+            </label>
+            <small style={{ display: 'block', marginTop: '0.25rem', color: 'var(--color-text-light)', fontSize: '0.85rem' }}>
+              Recurring expenses will be automatically added to the new month when you click "End of Month"
+            </small>
           </div>
 
           <div className="form-actions-horizontal">

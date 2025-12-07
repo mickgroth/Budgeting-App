@@ -19,6 +19,7 @@ export interface Expense {
   description: string;
   date: string; // ISO date string
   receiptImage?: string; // Firebase Storage URL or Base64 data URL (for backward compatibility)
+  isRecurring?: boolean; // If true, this expense will be automatically populated for new months
 }
 
 /**

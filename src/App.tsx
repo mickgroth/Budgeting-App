@@ -82,6 +82,7 @@ function App() {
     deleteArchive,
     updateArchivedExpense,
     deleteArchivedExpense,
+    markExpenseAsRecurring,
     resetBudget,
   } = useBudget(currentUser?.uid || null);
 
@@ -115,8 +116,8 @@ function App() {
   };
 
   // Handle adding expense with success feedback
-  const handleAddExpense = (categoryId: string, amount: number, description: string, receiptImage?: string) => {
-    addExpense(categoryId, amount, description, receiptImage);
+  const handleAddExpense = (categoryId: string, amount: number, description: string, receiptImage?: string, isRecurring?: boolean) => {
+    addExpense(categoryId, amount, description, receiptImage, isRecurring);
     setShowSuccessMessage(true);
   };
 
@@ -201,6 +202,7 @@ function App() {
             onDeleteArchive={deleteArchive}
             onUpdateArchivedExpense={updateArchivedExpense}
             onDeleteArchivedExpense={deleteArchivedExpense}
+            onMarkExpenseAsRecurring={markExpenseAsRecurring}
             onBack={() => setCurrentView('budget')}
           />
         </div>

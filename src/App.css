@@ -2895,6 +2895,13 @@ button:active {
   transform: scale(1.2);
 }
 
+.recurring-indicator {
+  font-size: 0.875rem;
+  opacity: 0.8;
+  display: inline-flex;
+  align-items: center;
+}
+
 .expense-row-archive .expense-meta {
   display: flex;
   gap: 1rem;
