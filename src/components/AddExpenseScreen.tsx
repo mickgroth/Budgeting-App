@@ -706,24 +706,45 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({
           </div>
 
           <div className="form-group">
-            <label htmlFor="isRecurring" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', userSelect: 'none' }}>
+            <label 
+              htmlFor="isRecurring" 
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '0.75rem', 
+                cursor: 'pointer', 
+                userSelect: 'none',
+                position: 'relative',
+                zIndex: 1
+              }}
+              onClick={(e) => {
+                // Allow label click to toggle checkbox
+                if (!isScanning && e.target !== e.currentTarget.querySelector('input')) {
+                  setIsRecurring(!isRecurring);
+                }
+              }}
+            >
               <input
                 id="isRecurring"
                 type="checkbox"
                 checked={isRecurring}
-                onChange={(e) => setIsRecurring(e.target.checked)}
+                onChange={(e) => {
+                  e.stopPropagation();
+                  setIsRecurring(e.target.checked);
+                }}
                 disabled={isScanning}
                 style={{ 
-                  cursor: 'pointer',
-                  width: '18px',
-                  height: '18px',
+                  cursor: isScanning ? 'not-allowed' : 'pointer',
+                  width: '20px',
+                  height: '20px',
                   accentColor: '#3B82F6',
-                  flexShrink: 0
+                  flexShrink: 0,
+                  margin: 0
                 }}
               />
               <span style={{ cursor: 'pointer' }}>Mark as recurring expense</span>
             </label>
-            <small style={{ display: 'block', marginTop: '0.25rem', marginLeft: '1.5rem', color: 'var(--color-text-light)', fontSize: '0.85rem' }}>
+            <small style={{ display: 'block', marginTop: '0.5rem', marginLeft: '0', color: 'var(--color-text-light)', fontSize: '0.85rem' }}>
               Recurring expenses will be automatically added to new months
             </small>
           </div>

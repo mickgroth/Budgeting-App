@@ -175,11 +175,11 @@ export const MonthView: React.FC<MonthViewProps> = ({
             <CategoryCard
               key={category.id}
               category={category}
-              onUpdate={(updates) => onUpdateCategory(category.id, updates)}
-              onDelete={() => onDeleteCategory(category.id)}
-              onReorder={(direction) => onReorderCategory(category.id, direction)}
-              canMoveUp={index > 0}
-              canMoveDown={index < sortedCategories.length - 1}
+              onUpdate={(id, updates) => onUpdateCategory(id, updates)}
+              onDelete={(id) => onDeleteCategory(id)}
+              onReorder={(id, direction) => onReorderCategory(id, direction)}
+              isFirst={index === 0}
+              isLast={index === sortedCategories.length - 1}
             />
           ))}
         </div>

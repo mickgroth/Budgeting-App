@@ -269,6 +269,31 @@ function AppUnified() {
 
   // Savings Tracker View
   if (currentView === 'savings') {
+    // Convert months to archives format for SavingsTracker
+    const archives = (budget.months || []).map(m => ({
+      id: m?.id || '',
+      month: m?.month || '',
+      expenses: m?.expenses || [],
+      reimbursements: m?.reimbursements || [],
+      additionalIncome: m?.additionalIncome || [],
+      categorySnapshots: (m?.categories || []).map(cat => ({
+        id: cat?.id || '',
+        name: cat?.name || '',
+        allocated: cat?.allocated || 0,
+        spent: cat?.spent || 0,
+        color: cat?.color || '#3B82F6',
+      })),
+      salaryIncome: m?.salaryIncome || 0,
+      totalBudget: (m?.salaryIncome || 0) + (m?.additionalIncome || []).reduce((sum, inc) => sum + inc.amount, 0),
+      totalSpent: (m?.categories || []).reduce((sum, cat) => sum + cat.spent, 0),
+      archivedDate: m?.createdDate || new Date().toISOString(),
+    }));
+
+    const currentMonthData = getCurrentMonth();
+    const totalBudget = currentMonthData 
+      ? currentMonthData.salaryIncome + currentMonthData.additionalIncome.reduce((sum, inc) => sum + inc.amount, 0)
+      : 0;
+
     return (
       <div className="app">
         <div className="container">
@@ -289,26 +314,24 @@ function AppUnified() {
           <SavingsTracker
             savings={budget.savings}
             longTermGoals={budget.longTermGoals}
+            monthlyArchives={archives}
+            totalBudget={totalBudget}
             onSetSavingsGoal={setSavingsGoal}
-            onCalculateActualSavings={calculateActualSavings}
-            onDeleteSavings={(savingsId) => {
-              // Implement delete savings if needed
-              console.log('Delete savings:', savingsId);
+            onDeleteSavings={(month) => {
+              console.log('Delete savings for month:', month);
             }}
             onAddLongTermGoal={addLongTermGoal}
             onUpdateLongTermGoal={updateLongTermGoal}
             onDeleteLongTermGoal={deleteLongTermGoal}
             onReorderLongTermGoal={(goalId, direction) => {
-              // Implement reorder if needed
               console.log('Reorder goal:', goalId, direction);
             }}
-            onUpdateLongTermGoalProgress={(goalId, amount) => {
-              const goal = budget.longTermGoals.find(g => g.id === goalId);
-              if (goal) {
-                updateLongTermGoal(goalId, { currentAmount: goal.currentAmount + amount });
-              }
-            }}
+            onUpdateLongTermGoalProgress={calculateActualSavings}
             onBack={() => setCurrentView('month')}
+            getMonthlyExpenses={(month) => {
+              const monthData = getMonth(month);
+              return monthData ? monthData.categories.reduce((sum, cat) => sum + cat.spent, 0) : 0;
+            }}
           />
         </div>
       </div>
@@ -355,7 +378,7 @@ function AppUnified() {
             ← Back to Month View
           </button>
           <MonthlyComparison
-            monthlyArchives={archives}
+            archives={archives}
             onBack={() => setCurrentView('month')}
           />
         </div>
