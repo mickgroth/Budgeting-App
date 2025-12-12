@@ -706,48 +706,64 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({
           </div>
 
           <div className="form-group" style={{ marginTop: '1rem' }}>
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'flex-start', 
-              gap: '0.75rem',
-              padding: '0.75rem',
-              background: '#F9FAFB',
-              borderRadius: '8px',
-              border: '1px solid #E5E7EB'
-            }}>
-              <input
-                id="isRecurring"
-                type="checkbox"
-                checked={isRecurring}
-                onChange={(e) => setIsRecurring(e.target.checked)}
-                disabled={isScanning}
-                style={{ 
-                  cursor: isScanning ? 'not-allowed' : 'pointer',
-                  width: '20px',
-                  height: '20px',
-                  minWidth: '20px',
-                  minHeight: '20px',
-                  accentColor: '#3B82F6',
-                  flexShrink: 0,
-                  margin: 0,
-                  marginTop: '2px'
-                }}
-              />
-              <label 
-                htmlFor="isRecurring"
-                style={{ 
-                  cursor: 'pointer', 
-                  userSelect: 'none',
+            <div 
+              onClick={() => {
+                if (!isScanning) {
+                  const newValue = !isRecurring;
+                  console.log('Recurring checkbox clicked, new value:', newValue);
+                  setIsRecurring(newValue);
+                }
+              }}
+              style={{ 
+                display: 'flex', 
+                alignItems: 'flex-start', 
+                gap: '0.75rem',
+                padding: '0.75rem',
+                background: isRecurring ? '#EFF6FF' : '#F9FAFB',
+                borderRadius: '8px',
+                border: isRecurring ? '2px solid #3B82F6' : '1px solid #E5E7EB',
+                cursor: isScanning ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              {/* Custom checkbox visual */}
+              <div
+                style={{
+                  width: '24px',
+                  height: '24px',
+                  minWidth: '24px',
+                  minHeight: '24px',
+                  borderRadius: '6px',
+                  border: '2px solid ' + (isRecurring ? '#3B82F6' : '#D1D5DB'),
+                  background: isRecurring ? '#3B82F6' : 'white',
                   display: 'flex',
-                  flexDirection: 'column',
-                  gap: '0.25rem'
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white',
+                  fontSize: '1rem',
+                  fontWeight: 'bold',
+                  flexShrink: 0,
+                  transition: 'all 0.2s ease'
                 }}
               >
-                <span style={{ fontWeight: '500', color: '#1F2937' }}>Mark as recurring expense</span>
+                {isRecurring && '✓'}
+              </div>
+              <div
+                style={{ 
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.25rem',
+                  flex: 1
+                }}
+              >
+                <span style={{ fontWeight: '500', color: '#1F2937' }}>
+                  Mark as recurring expense
+                  {isRecurring && <span style={{ marginLeft: '0.5rem', color: '#3B82F6', fontSize: '0.875rem' }}>✓ Enabled</span>}
+                </span>
                 <span style={{ fontSize: '0.8125rem', color: '#6B7280' }}>
                   Recurring expenses will be automatically added to new months
                 </span>
-              </label>
+              </div>
             </div>
           </div>
 
