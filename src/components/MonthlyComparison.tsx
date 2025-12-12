@@ -62,15 +62,30 @@ export const MonthlyComparison: React.FC<MonthlyComparisonProps> = ({
     .filter(a => selectedMonths.includes(a.month))
     .sort((a, b) => a.month.localeCompare(b.month)); // Oldest first
   
+  // Find the current month archive to get the latest category order
+  const currentMonthArchive = archives.find(a => a.month === currentMonth);
+  
+  // First, collect all categories from selected archives
   selectedArchives.forEach(archive => {
     archive.categorySnapshots.forEach((cat, index) => {
       if (!allCategories.has(cat.id)) {
-        // Try to get order from category, fallback to index
+        // Default order from this archive
         const order = (cat as any).order !== undefined ? (cat as any).order : index;
         allCategories.set(cat.id, { name: cat.name, color: cat.color, order });
       }
     });
   });
+  
+  // Override with current month's order if available (most recent user preference)
+  if (currentMonthArchive) {
+    currentMonthArchive.categorySnapshots.forEach(cat => {
+      if (allCategories.has(cat.id)) {
+        const existing = allCategories.get(cat.id)!;
+        const order = (cat as any).order !== undefined ? (cat as any).order : existing.order;
+        allCategories.set(cat.id, { ...existing, order });
+      }
+    });
+  }
 
   // Build comparison data
   const categoryData = Array.from(allCategories.entries()).map(([catId, catInfo]) => {
