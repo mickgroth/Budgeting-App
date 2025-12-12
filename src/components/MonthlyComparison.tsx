@@ -134,8 +134,21 @@ export const MonthlyComparison: React.FC<MonthlyComparisonProps> = ({
   // Calculate percentage change for each category (from oldest to newest month)
   const getCategoryTrend = (monthlySpending: Array<{ month: string; spent: number }>) => {
     if (monthlySpending.length < 2) return null;
-    const first = monthlySpending[0].spent; // First (oldest) month
-    const last = monthlySpending[monthlySpending.length - 1].spent; // Last (newest) month
+    
+    // Filter out current month if spent is 0
+    const monthsForTrend = monthlySpending.filter(m => {
+      // Exclude current month only if spent is 0
+      if (m.month === currentMonth && m.spent === 0) {
+        return false;
+      }
+      return true;
+    });
+    
+    if (monthsForTrend.length < 2) return null;
+    
+    const first = monthsForTrend[0].spent; // First (oldest) month
+    const last = monthsForTrend[monthsForTrend.length - 1].spent; // Last (newest) month
+    
     if (first === 0) return null;
     return ((last - first) / first) * 100;
   };
