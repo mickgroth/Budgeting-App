@@ -191,15 +191,11 @@ function AppUnified() {
 
   // Add Expense View
   if (currentView === 'add-expense') {
-    const handleCancel = () => {
-      console.log('Cancel clicked - returning to month view');
-      setCurrentView('month');
-    };
-
     return (
       <div className="app">
         <div className="container">
           <AddExpenseScreen
+            userId={currentUser?.uid || ''}
             categories={monthData.categories}
             onAddExpense={(categoryId, amount, description, receiptImage, isRecurring) => {
               addExpenseToMonth(selectedMonth, categoryId, amount, description, receiptImage, isRecurring);
@@ -207,7 +203,7 @@ function AppUnified() {
               setShowSuccessMessage(true);
               setCurrentView('month');
             }}
-            onCancel={handleCancel}
+            onBack={() => setCurrentView('month')}
           />
         </div>
       </div>
@@ -216,15 +212,11 @@ function AppUnified() {
 
   // Add Reimbursement View
   if (currentView === 'add-reimbursement') {
-    const handleCancel = () => {
-      console.log('Cancel clicked - returning to month view');
-      setCurrentView('month');
-    };
-
     return (
       <div className="app">
         <div className="container">
           <AddReimbursementScreen
+            userId={currentUser?.uid || ''}
             categories={monthData.categories}
             onAddReimbursement={(categoryId, amount, description, receiptImage) => {
               addReimbursementToMonth(selectedMonth, categoryId, amount, description, receiptImage);
@@ -232,7 +224,7 @@ function AppUnified() {
               setShowSuccessMessage(true);
               setCurrentView('month');
             }}
-            onCancel={handleCancel}
+            onBack={() => setCurrentView('month')}
           />
         </div>
       </div>
