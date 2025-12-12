@@ -5,26 +5,25 @@ import { BudgetCategory } from '../types/budget';
 import { formatCurrency, generateId } from '../utils/budgetHelpers';
 import { StorageService } from '../services/storageService';
 
-interface AddExpenseScreenProps {
+interface AddReimbursementScreenProps {
   userId: string;
   categories: BudgetCategory[];
-  onAddExpense: (categoryId: string, amount: number, description: string, receiptImage?: string, isRecurring?: boolean) => void;
+  onAddReimbursement: (categoryId: string, amount: number, description: string, receiptImage?: string) => void;
   onBack: () => void;
 }
 
 /**
- * Screen for logging new expenses with receipt scanning
+ * Screen for logging new reimbursements with receipt scanning
  */
-export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({
+export const AddReimbursementScreen: React.FC<AddReimbursementScreenProps> = ({
   userId,
   categories,
-  onAddExpense,
+  onAddReimbursement,
   onBack,
 }) => {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [amount, setAmount] = useState<string>('');
   const [description, setDescription] = useState<string>('');
-  const [isRecurring, setIsRecurring] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const [receiptImage, setReceiptImage] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState<boolean>(false);
@@ -44,29 +43,13 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({
 
     // Known merchant patterns (case-insensitive)
     const knownMerchants = [
-      /fedex\s*(ground|express|office)?/i,
-      /ups\s*(store)?/i,
+      /venmo/i,
+      /paypal/i,
+      /zelle/i,
+      /cash\s*app/i,
+      /fedex/i,
+      /ups/i,
       /usps/i,
-      /starbucks/i,
-      /walmart/i,
-      /target/i,
-      /costco/i,
-      /amazon/i,
-      /mcdonald'?s/i,
-      /burger\s*king/i,
-      /subway/i,
-      /pizza\s*hut/i,
-      /domino'?s/i,
-      /whole\s*foods/i,
-      /safeway/i,
-      /kroger/i,
-      /cvs/i,
-      /walgreens/i,
-      /home\s*depot/i,
-      /lowes/i,
-      /staples/i,
-      /office\s*depot/i,
-      /best\s*buy/i,
     ];
 
     // First, look for known merchants in the text
@@ -129,19 +112,6 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({
       }
     }
 
-    // Look for lines with business suffixes
-    const businessSuffixPattern = /([A-Z][A-Za-z\s&'-]{2,40})\s*(Inc\.?|LLC|Corp\.?|Ltd\.?|Company|Co\.)/i;
-    for (const line of lines.slice(0, 10)) {
-      if (!isValidMerchantLine(line)) continue;
-      
-      const match = line.match(businessSuffixPattern);
-      if (match) {
-        const name = match[1].trim();
-        console.log('Found business with suffix:', name);
-        return name;
-      }
-    }
-
     // Fallback: find first "clean" line with mostly letters
     for (const line of lines.slice(0, 10)) {
       if (isValidMerchantLine(line)) {
@@ -155,109 +125,6 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({
     }
 
     console.log('No merchant name found');
-    return null;
-  };
-
-  /**
-   * Find best matching category based on receipt content
-   */
-  const findBestCategory = (text: string, merchantName: string | null): string | null => {
-    const lowerText = text.toLowerCase();
-    const lowerMerchant = merchantName?.toLowerCase() || '';
-
-    // Category keyword mappings (customize based on common categories)
-    const categoryKeywords: { keywords: string[]; priority: number }[] = [
-      // Transportation & Shipping
-      { keywords: ['fedex', 'ups', 'usps', 'shipping', 'freight', 'delivery', 'transport', 'gas', 'fuel', 'shell', 'chevron', 'exxon', 'bp', 'mobil', 'uber', 'lyft', 'taxi', 'parking'], priority: 10 },
-      
-      // Food & Dining
-      { keywords: ['restaurant', 'cafe', 'coffee', 'starbucks', 'mcdonald', 'burger', 'pizza', 'food', 'dining', 'bar', 'grill', 'kitchen', 'bistro'], priority: 9 },
-      
-      // Groceries
-      { keywords: ['grocery', 'supermarket', 'walmart', 'target', 'costco', 'safeway', 'kroger', 'whole foods', 'market', 'produce'], priority: 8 },
-      
-      // Office Supplies
-      { keywords: ['office', 'staples', 'depot', 'supplies', 'paper', 'printer', 'ink'], priority: 7 },
-      
-      // Utilities
-      { keywords: ['electric', 'water', 'gas bill', 'utility', 'power', 'phone', 'internet', 'cable'], priority: 6 },
-      
-      // Entertainment
-      { keywords: ['movie', 'cinema', 'theater', 'entertainment', 'ticket', 'concert', 'netflix', 'spotify'], priority: 5 },
-      
-      // Healthcare
-      { keywords: ['pharmacy', 'cvs', 'walgreens', 'medical', 'doctor', 'hospital', 'clinic', 'health'], priority: 4 },
-      
-      // Shopping
-      { keywords: ['amazon', 'store', 'shop', 'retail', 'purchase'], priority: 3 },
-    ];
-
-    // Find matching categories from user's budget
-    const categoryScores = new Map<string, number>();
-
-    for (const category of categories) {
-      const categoryNameLower = category.name.toLowerCase();
-      let score = 0;
-
-      // Check if merchant name contains category name or vice versa
-      if (lowerMerchant && (lowerMerchant.includes(categoryNameLower) || categoryNameLower.includes(lowerMerchant))) {
-        score += 100;
-      }
-
-      // Check keyword matches
-      for (const { keywords, priority } of categoryKeywords) {
-        for (const keyword of keywords) {
-          const keywordInMerchant = lowerMerchant.includes(keyword);
-          const keywordInText = lowerText.includes(keyword);
-          
-          // Check in merchant name (highest weight)
-          if (keywordInMerchant) {
-            // Direct match: keyword in both merchant and category name
-            if (categoryNameLower.includes(keyword)) {
-              score += priority * 5;
-              console.log(`  Strong match: "${keyword}" in merchant and category "${category.name}": +${priority * 5}`);
-            } else {
-              // Partial match: keyword type matches category context
-              const keywordType = 
-                ['fedex', 'ups', 'usps', 'shipping', 'freight', 'delivery'].includes(keyword) ? 'shipping' :
-                ['restaurant', 'cafe', 'coffee', 'starbucks', 'food', 'dining'].includes(keyword) ? 'food' :
-                ['gas', 'fuel', 'shell', 'chevron', 'exxon'].includes(keyword) ? 'gas' :
-                ['grocery', 'walmart', 'target', 'market'].includes(keyword) ? 'grocery' :
-                ['office', 'staples', 'depot', 'supplies'].includes(keyword) ? 'office' :
-                null;
-              
-              if (keywordType && categoryNameLower.includes(keywordType)) {
-                score += priority * 3;
-                console.log(`  Good match: "${keyword}" (${keywordType}) in merchant matches category "${category.name}": +${priority * 3}`);
-              } else if (keywordType) {
-                score += priority * 2;
-                console.log(`  Weak match: "${keyword}" in merchant, category "${category.name}": +${priority * 2}`);
-              }
-            }
-          }
-          
-          // Check in full text (lower weight)
-          if (keywordInText && categoryNameLower.includes(keyword)) {
-            score += priority;
-            console.log(`  Text match: "${keyword}" in text and category "${category.name}": +${priority}`);
-          }
-        }
-      }
-
-      if (score > 0) {
-        categoryScores.set(category.id, score);
-        console.log(`Category "${category.name}" score: ${score}`);
-      }
-    }
-
-    // Return category with highest score
-    if (categoryScores.size > 0) {
-      const bestMatch = Array.from(categoryScores.entries()).reduce((a, b) => a[1] > b[1] ? a : b);
-      const bestCategory = categories.find(c => c.id === bestMatch[0]);
-      console.log('Best matching category:', bestCategory?.name, 'with score:', bestMatch[1]);
-      return bestMatch[0];
-    }
-
     return null;
   };
 
@@ -421,16 +288,10 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({
       // Extract merchant name for description
       const merchantName = extractMerchantName(text);
       if (merchantName) {
-        setDescription(merchantName);
+        setDescription(`Reimbursement from ${merchantName}`);
         console.log('Description set to:', merchantName);
-      }
-
-      // Find best matching category
-      const bestCategoryId = findBestCategory(text, merchantName);
-      if (bestCategoryId) {
-        setSelectedCategoryId(bestCategoryId);
-        const category = categories.find(c => c.id === bestCategoryId);
-        console.log('Auto-selected category:', category?.name);
+      } else {
+        setDescription('Reimbursement');
       }
 
       // Extract amount from OCR text
@@ -470,7 +331,6 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({
   const resetForm = () => {
     setAmount('');
     setDescription('');
-    setIsRecurring(false);
     setReceiptImage(null);
     setError('');
     if (fileInputRef.current) {
@@ -479,9 +339,9 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({
   };
 
   /**
-   * Save expense and optionally navigate back or reset form
+   * Save reimbursement and optionally navigate back or reset form
    */
-  const saveExpense = async (shouldStayOnScreen: boolean = false) => {
+  const saveReimbursement = async (shouldStayOnScreen: boolean = false) => {
     setError('');
 
     const amountNum = parseFloat(amount);
@@ -507,8 +367,8 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({
     if (receiptImage) {
       try {
         setIsUploading(true);
-        const expenseId = generateId(); // Generate ID before upload
-        receiptStorageUrl = await StorageService.uploadReceiptImage(userId, expenseId, receiptImage);
+        const reimbursementId = generateId(); // Generate ID before upload
+        receiptStorageUrl = await StorageService.uploadReceiptImage(userId, reimbursementId, receiptImage);
         console.log('Receipt uploaded to Storage:', receiptStorageUrl);
       } catch (err) {
         console.error('Failed to upload receipt:', err);
@@ -519,7 +379,7 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({
     }
 
     try {
-      onAddExpense(selectedCategoryId, amountNum, description, receiptStorageUrl, isRecurring);
+      onAddReimbursement(selectedCategoryId, amountNum, description, receiptStorageUrl);
       
       if (shouldStayOnScreen) {
         // Reset form but keep the category selected
@@ -529,8 +389,8 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({
         onBack();
       }
     } catch (err) {
-      console.error('Failed to add expense:', err);
-      setError('Failed to add expense. Please try again.');
+      console.error('Failed to add reimbursement:', err);
+      setError('Failed to add reimbursement. Please try again.');
     } finally {
       setIsUploading(false);
     }
@@ -538,12 +398,12 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await saveExpense(false);
+    await saveReimbursement(false);
   };
 
   const handleSaveAndAddAnother = async (e: React.MouseEvent) => {
     e.preventDefault();
-    await saveExpense(true);
+    await saveReimbursement(true);
   };
 
   return (
@@ -552,7 +412,7 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({
         <button className="btn-back" onClick={onBack}>
           ← Back to Budget
         </button>
-        <h1>Add Expense</h1>
+        <h1>Add Reimbursement</h1>
       </div>
 
       {categories.length === 0 ? (
@@ -566,15 +426,26 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({
         <form className="expense-form" onSubmit={handleSubmit}>
           {error && <div className="error-message">{error}</div>}
 
+          <div className="info-banner" style={{ 
+            background: '#F0F9FF', 
+            border: '1px solid #BAE6FD', 
+            borderRadius: '8px', 
+            padding: '12px', 
+            marginBottom: '20px',
+            color: '#0C4A6E'
+          }}>
+            <strong>💡 What's a reimbursement?</strong>
+            <p style={{ margin: '4px 0 0 0', fontSize: '0.9rem' }}>
+              A reimbursement reduces your spending in a category. For example: you paid for friends at a restaurant, and they paid you back via Venmo.
+            </p>
+          </div>
+
           {/* Receipt Upload Section */}
            <div className="receipt-upload-section">
             <h3>📸 Upload Receipt (Optional)</h3>
             <p className="upload-description">
-              Take a photo or upload an image of your receipt. We'll automatically extract:
+              Take a photo or upload an image of your receipt/payment confirmation. We'll automatically extract the amount.
               <br />
-              <small style={{ fontSize: '0.8rem', color: 'var(--color-primary)', fontWeight: 500, marginTop: '0.25rem', display: 'block' }}>
-                ✅ Amount • ✅ Merchant Name • ✅ Best Category
-              </small>
               <small style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', display: 'block', marginTop: '0.25rem' }}>
                 Supports: JPEG, PNG, WebP, HEIC (auto-converts)
               </small>
@@ -699,32 +570,15 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="e.g., Coffee at Starbucks, Weekly groceries"
+              placeholder="e.g., Venmo from John, PayPal reimbursement"
               required
               disabled={isScanning}
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="isRecurring" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-              <input
-                id="isRecurring"
-                type="checkbox"
-                checked={isRecurring}
-                onChange={(e) => setIsRecurring(e.target.checked)}
-                disabled={isScanning}
-                style={{ cursor: 'pointer' }}
-              />
-              <span>Mark as recurring expense</span>
-            </label>
-            <small style={{ display: 'block', marginTop: '0.25rem', color: 'var(--color-text-light)', fontSize: '0.85rem' }}>
-              Recurring expenses will be automatically added to the new month when you click "End of Month"
-            </small>
-          </div>
-
           <div className="form-actions-horizontal">
             <button type="submit" className="btn-primary" disabled={isScanning || isUploading}>
-              {isUploading ? 'Uploading Receipt...' : 'Add Expense'}
+              {isUploading ? 'Uploading Receipt...' : 'Add Reimbursement'}
             </button>
             <button 
               type="button" 

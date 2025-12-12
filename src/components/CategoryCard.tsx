@@ -6,6 +6,9 @@ interface CategoryCardProps {
   category: BudgetCategory;
   onUpdate: (id: string, updates: Partial<Omit<BudgetCategory, 'id'>>) => void;
   onDelete: (id: string) => void;
+  onReorder: (id: string, direction: 'up' | 'down') => void;
+  isFirst: boolean;
+  isLast: boolean;
 }
 
 /**
@@ -15,6 +18,9 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
   category,
   onUpdate,
   onDelete,
+  onReorder,
+  isFirst,
+  isLast,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(category.name);
@@ -95,6 +101,24 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
       <div className="category-header">
         <h3 className="category-name">{capitalizeWords(category.name)}</h3>
         <div className="category-actions">
+          <button
+            className="btn-icon"
+            onClick={() => onReorder(category.id, 'up')}
+            disabled={isFirst}
+            title="Move up"
+            style={{ opacity: isFirst ? 0.3 : 1, cursor: isFirst ? 'not-allowed' : 'pointer' }}
+          >
+            ⬆️
+          </button>
+          <button
+            className="btn-icon"
+            onClick={() => onReorder(category.id, 'down')}
+            disabled={isLast}
+            title="Move down"
+            style={{ opacity: isLast ? 0.3 : 1, cursor: isLast ? 'not-allowed' : 'pointer' }}
+          >
+            ⬇️
+          </button>
           <button
             className="btn-icon"
             onClick={() => setIsEditing(true)}

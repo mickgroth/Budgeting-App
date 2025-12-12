@@ -6,11 +6,14 @@ import {
   getTotalSpent,
   getRemainingBudget,
   getAllocatedPercentage,
+  getCalculatedTotalBudget,
 } from '../utils/budgetHelpers';
 
 interface BudgetSummaryProps {
   budget: Budget;
   onTotalBudgetChange: (amount: number) => void;
+  onSalaryIncomeChange: (amount: number) => void;
+  onAddIncome: () => void;
   currentMonthSavingsGoal?: number;
 }
 
@@ -20,28 +23,34 @@ interface BudgetSummaryProps {
 export const BudgetSummary: React.FC<BudgetSummaryProps> = ({
   budget,
   onTotalBudgetChange,
+  onSalaryIncomeChange,
+  onAddIncome,
   currentMonthSavingsGoal = 0,
 }) => {
-  const [isEditingBudget, setIsEditingBudget] = useState(false);
-  const [editBudgetValue, setEditBudgetValue] = useState(budget.totalBudget.toString());
+  const [isEditingSalary, setIsEditingSalary] = useState(false);
+  const [editSalaryValue, setEditSalaryValue] = useState(budget.salaryIncome.toString());
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Calculate total budget (salary + additional income)
+  const totalBudget = getCalculatedTotalBudget(budget);
+  const totalAdditionalIncome = budget.additionalIncome.reduce((sum, inc) => sum + inc.amount, 0);
 
   const categoryAllocated = getTotalAllocated(budget.categories);
   const totalAllocated = categoryAllocated + currentMonthSavingsGoal; // Include savings in allocation
   const totalSpent = getTotalSpent(budget.categories);
-  const allocatedPercentage = budget.totalBudget > 0 
-    ? (totalAllocated / budget.totalBudget) * 100 
+  const allocatedPercentage = totalBudget > 0 
+    ? (totalAllocated / totalBudget) * 100 
     : 0;
   
   // Available to Spend = Budget - Spent - Savings Set Aside
-  const availableToSpend = budget.totalBudget - totalSpent - currentMonthSavingsGoal;
-  const availablePercentage = budget.totalBudget > 0 
-    ? (availableToSpend / budget.totalBudget) * 100 
+  const availableToSpend = totalBudget - totalSpent - currentMonthSavingsGoal;
+  const availablePercentage = totalBudget > 0 
+    ? (availableToSpend / totalBudget) * 100 
     : 0;
   
   // Calculate percentages for spent
-  const spentPercentage = budget.totalBudget > 0 
-    ? (totalSpent / budget.totalBudget) * 100 
+  const spentPercentage = totalBudget > 0 
+    ? (totalSpent / totalBudget) * 100 
     : 0;
 
   // Get current month name
@@ -49,29 +58,29 @@ export const BudgetSummary: React.FC<BudgetSummaryProps> = ({
 
   // Focus input when editing starts
   useEffect(() => {
-    if (isEditingBudget && inputRef.current) {
+    if (isEditingSalary && inputRef.current) {
       inputRef.current.focus();
       inputRef.current.select();
     }
-  }, [isEditingBudget]);
+  }, [isEditingSalary]);
 
   const handleDoubleClick = () => {
-    setIsEditingBudget(true);
-    setEditBudgetValue(budget.totalBudget.toString());
+    setIsEditingSalary(true);
+    setEditSalaryValue(budget.salaryIncome.toString());
   };
 
-  const handleBudgetSave = () => {
-    const value = parseFloat(editBudgetValue) || 0;
-    onTotalBudgetChange(Math.max(0, value));
-    setIsEditingBudget(false);
+  const handleSalarySave = () => {
+    const value = parseFloat(editSalaryValue) || 0;
+    onSalaryIncomeChange(Math.max(0, value));
+    setIsEditingSalary(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      handleBudgetSave();
+      handleSalarySave();
     } else if (e.key === 'Escape') {
-      setIsEditingBudget(false);
-      setEditBudgetValue(budget.totalBudget.toString());
+      setIsEditingSalary(false);
+      setEditSalaryValue(budget.salaryIncome.toString());
     }
   };
 
@@ -80,14 +89,14 @@ export const BudgetSummary: React.FC<BudgetSummaryProps> = ({
       <h1>Budget Tracker</h1>
 
       {/* Monthly Budget Progress Bar */}
-      {budget.totalBudget > 0 && (
+      {totalBudget > 0 && (
         <div className="overall-progress-section">
             <div className="overall-progress-header">
               <span className="overall-progress-label">
                 {currentMonth} Budget Consumption
               </span>
               <span className="overall-progress-amounts">
-                {formatCurrency(totalSpent)} of {formatCurrency(currentMonthSavingsGoal > 0 ? (budget.totalBudget - currentMonthSavingsGoal) : budget.totalBudget)} spent
+                {formatCurrency(totalSpent)} of {formatCurrency(currentMonthSavingsGoal > 0 ? (totalBudget - currentMonthSavingsGoal) : totalBudget)} spent
                 <strong className={spentPercentage > 100 ? 'over-budget' : ''}>
                   {' '}({spentPercentage.toFixed(1)}%)
                 </strong>
@@ -105,30 +114,59 @@ export const BudgetSummary: React.FC<BudgetSummaryProps> = ({
       )}
 
       <div className="budget-stats">
+        {/* Salary Income */}
         <div 
-          className={`stat-card editable ${isEditingBudget ? 'editing' : ''}`}
+          className={`stat-card editable ${isEditingSalary ? 'editing' : ''}`}
           onDoubleClick={handleDoubleClick}
           title="Double-click to edit"
         >
           <div className="stat-label-wrapper">
-            <div className="stat-label">Monthly Budget</div>
-            {!isEditingBudget && <span className="edit-hint">✏️ Double-click to edit</span>}
+            <div className="stat-label">💰 Salary Income</div>
+            {!isEditingSalary && <span className="edit-hint">✏️ Double-click to edit</span>}
           </div>
-          {isEditingBudget ? (
+          {isEditingSalary ? (
             <input
               ref={inputRef}
               type="number"
               className="stat-value-input"
-              value={editBudgetValue}
-              onChange={(e) => setEditBudgetValue(e.target.value)}
-              onBlur={handleBudgetSave}
+              value={editSalaryValue}
+              onChange={(e) => setEditSalaryValue(e.target.value)}
+              onBlur={handleSalarySave}
               onKeyDown={handleKeyDown}
               min="0"
               step="0.01"
             />
           ) : (
-            <div className="stat-value">{formatCurrency(budget.totalBudget)}</div>
+            <div className="stat-value">{formatCurrency(budget.salaryIncome)}</div>
           )}
+          <div className="stat-note" style={{ fontSize: '0.75rem', color: '#6B7280', marginTop: '4px' }}>
+            Fixed monthly salary
+          </div>
+        </div>
+
+        {/* Additional Income */}
+        <div className="stat-card income-stat" style={{ cursor: 'pointer' }} onClick={onAddIncome} title="Click to add income">
+          <div className="stat-label-wrapper">
+            <div className="stat-label">➕ Additional Income</div>
+            <span className="edit-hint" style={{ fontSize: '0.75rem' }}>Click to add</span>
+          </div>
+          <div className="stat-value" style={{ color: '#10B981' }}>
+            {formatCurrency(totalAdditionalIncome)}
+          </div>
+          <div className="stat-note" style={{ fontSize: '0.75rem', color: '#6B7280', marginTop: '4px' }}>
+            {budget.additionalIncome.length} entr{budget.additionalIncome.length === 1 ? 'y' : 'ies'} this month
+          </div>
+        </div>
+
+        {/* Total Budget */}
+        <div className="stat-card" style={{ border: '2px solid #3B82F6' }}>
+          <div className="stat-label">📊 Total Budget</div>
+          <div className="stat-value" style={{ color: '#3B82F6', fontWeight: 'bold' }}>
+            {formatCurrency(totalBudget)}
+          </div>
+          <div className="stat-note" style={{ fontSize: '0.75rem', color: '#6B7280', marginTop: '4px' }}>
+            Salary + Additional
+          </div>
         </div>
 
         <div className="stat-card">
@@ -141,7 +179,7 @@ export const BudgetSummary: React.FC<BudgetSummaryProps> = ({
           <div className="stat-card savings-stat">
             <div className="stat-label">Set Aside for Savings</div>
             <div className="stat-value savings-value">{formatCurrency(currentMonthSavingsGoal)}</div>
-            <div className="stat-percentage">{budget.totalBudget > 0 ? ((currentMonthSavingsGoal / budget.totalBudget) * 100).toFixed(1) : 0}% of budget</div>
+            <div className="stat-percentage">{totalBudget > 0 ? ((currentMonthSavingsGoal / totalBudget) * 100).toFixed(1) : 0}% of budget</div>
           </div>
         )}
 

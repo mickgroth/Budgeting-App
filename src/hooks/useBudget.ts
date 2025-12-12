@@ -1,14 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
-import { Budget, BudgetCategory, Expense, MonthlySavings, LongTermSavingsGoal, MonthlyArchive, CATEGORY_COLORS } from '../types/budget';
+import { Budget, BudgetCategory, Expense, Reimbursement, AdditionalIncome, MonthlySavings, LongTermSavingsGoal, MonthlyArchive, CATEGORY_COLORS } from '../types/budget';
 import { generateId } from '../utils/budgetHelpers';
 import { FirebaseService } from '../services/firebaseService';
 import { StorageService } from '../services/storageService';
 
 // Default initial state
 const defaultBudget: Budget = {
-  totalBudget: 0,
+  salaryIncome: 0,
+  additionalIncome: [],
+  totalBudget: 0, // Deprecated - will be calculated
   categories: [],
   expenses: [],
+  reimbursements: [],
   savings: [],
   longTermGoals: [],
   monthlyArchives: [],
@@ -47,13 +50,33 @@ export const useBudget = (userId: string | null) => {
             order: goal.order !== undefined ? goal.order : index,
           }));
           
+          // Migration: ensure all categories have an order field
+          let categories = firebaseBudget.categories || [];
+          categories = categories.map((cat: any, index: number) => ({
+            ...cat,
+            order: cat.order !== undefined ? cat.order : index,
+          }));
+
+          // Migration: handle old totalBudget -> salaryIncome conversion
+          const salaryIncome = firebaseBudget.salaryIncome !== undefined 
+            ? firebaseBudget.salaryIncome 
+            : firebaseBudget.totalBudget || 0;
+
           setBudget({
-            totalBudget: firebaseBudget.totalBudget || 0,
-            categories: firebaseBudget.categories || [],
+            salaryIncome,
+            additionalIncome: firebaseBudget.additionalIncome || [],
+            totalBudget: firebaseBudget.totalBudget || 0, // Keep for backward compatibility
+            categories,
             expenses: firebaseBudget.expenses || [],
+            reimbursements: firebaseBudget.reimbursements || [], // Add for backward compatibility
             savings: firebaseBudget.savings || [],
             longTermGoals,
-            monthlyArchives: firebaseBudget.monthlyArchives || [], // Add for backward compatibility
+            monthlyArchives: (firebaseBudget.monthlyArchives || []).map((archive: any) => ({
+              ...archive,
+              reimbursements: archive.reimbursements || [],
+              additionalIncome: archive.additionalIncome || [],
+              salaryIncome: archive.salaryIncome !== undefined ? archive.salaryIncome : archive.totalBudget || 0,
+            })),
           });
         } else {
           // No data in Firebase, initialize with default
@@ -83,14 +106,34 @@ export const useBudget = (userId: string | null) => {
             ...goal,
             order: goal.order !== undefined ? goal.order : index,
           }));
+
+          // Migration: ensure all categories have an order field
+          let categories = updatedBudget.categories || [];
+          categories = categories.map((cat: any, index: number) => ({
+            ...cat,
+            order: cat.order !== undefined ? cat.order : index,
+          }));
+
+          // Migration: handle old totalBudget -> salaryIncome conversion
+          const salaryIncome = updatedBudget.salaryIncome !== undefined 
+            ? updatedBudget.salaryIncome 
+            : updatedBudget.totalBudget || 0;
           
           setBudget({
+            salaryIncome,
+            additionalIncome: updatedBudget.additionalIncome || [],
             totalBudget: updatedBudget.totalBudget || 0,
-            categories: updatedBudget.categories || [],
+            categories,
             expenses: updatedBudget.expenses || [],
+            reimbursements: updatedBudget.reimbursements || [], // Add for backward compatibility
             savings: updatedBudget.savings || [],
             longTermGoals,
-            monthlyArchives: updatedBudget.monthlyArchives || [], // Add for backward compatibility
+            monthlyArchives: (updatedBudget.monthlyArchives || []).map((archive: any) => ({
+              ...archive,
+              reimbursements: archive.reimbursements || [],
+              additionalIncome: archive.additionalIncome || [],
+              salaryIncome: archive.salaryIncome !== undefined ? archive.salaryIncome : archive.totalBudget || 0,
+            })),
           });
         }
       },
@@ -128,13 +171,71 @@ export const useBudget = (userId: string | null) => {
   }, [budget, isLoading, userId]);
 
   /**
-   * Update the total budget amount
+   * Update the total budget amount (deprecated - use setSalaryIncome instead)
    */
   const setTotalBudget = (amount: number) => {
     setBudget((prev) => ({
       ...prev,
       totalBudget: Math.max(0, amount),
+      salaryIncome: Math.max(0, amount), // Sync with salaryIncome for migration
     }));
+  };
+
+  /**
+   * Update the salary income amount
+   */
+  const setSalaryIncome = (amount: number) => {
+    setBudget((prev) => ({
+      ...prev,
+      salaryIncome: Math.max(0, amount),
+    }));
+  };
+
+  /**
+   * Add an additional income entry
+   */
+  const addAdditionalIncome = (amount: number, description: string) => {
+    const newIncome: AdditionalIncome = {
+      id: generateId(),
+      amount: Math.max(0, amount),
+      description: description.trim(),
+      date: new Date().toISOString(),
+    };
+
+    setBudget((prev) => ({
+      ...prev,
+      additionalIncome: [...prev.additionalIncome, newIncome],
+    }));
+  };
+
+  /**
+   * Update an existing additional income entry
+   */
+  const updateAdditionalIncome = (incomeId: string, updates: Partial<Omit<AdditionalIncome, 'id'>>) => {
+    setBudget((prev) => ({
+      ...prev,
+      additionalIncome: prev.additionalIncome.map((income) =>
+        income.id === incomeId ? { ...income, ...updates } : income
+      ),
+    }));
+  };
+
+  /**
+   * Delete an additional income entry
+   */
+  const deleteAdditionalIncome = (incomeId: string) => {
+    setBudget((prev) => ({
+      ...prev,
+      additionalIncome: prev.additionalIncome.filter((income) => income.id !== incomeId),
+    }));
+  };
+
+  /**
+   * Calculate total budget (salary + additional income)
+   */
+  const getTotalBudget = (): number => {
+    const additionalTotal = budget.additionalIncome.reduce((sum, income) => sum + income.amount, 0);
+    return budget.salaryIncome + additionalTotal;
   };
 
   /**
@@ -142,12 +243,18 @@ export const useBudget = (userId: string | null) => {
    */
   const addCategory = (name: string, allocated: number) => {
     const colorIndex = budget.categories.length % CATEGORY_COLORS.length;
+    // Find the maximum order value and add 1, or use 0 if no categories exist
+    const maxOrder = budget.categories.length > 0
+      ? Math.max(...budget.categories.map(c => c.order || 0))
+      : -1;
+    
     const newCategory: BudgetCategory = {
       id: generateId(),
       name: name.trim(),
       allocated: Math.max(0, allocated),
       spent: 0,
       color: CATEGORY_COLORS[colorIndex],
+      order: maxOrder + 1,
     };
 
     setBudget((prev) => ({
@@ -172,13 +279,47 @@ export const useBudget = (userId: string | null) => {
   };
 
   /**
-   * Delete a category
+   * Delete a category and reorder remaining categories
    */
   const deleteCategory = (id: string) => {
-    setBudget((prev) => ({
-      ...prev,
-      categories: prev.categories.filter((category) => category.id !== id),
-    }));
+    setBudget((prev) => {
+      const remaining = prev.categories
+        .filter((category) => category.id !== id)
+        .sort((a, b) => (a.order || 0) - (b.order || 0))
+        .map((category, index) => ({ ...category, order: index }));
+      
+      return {
+        ...prev,
+        categories: remaining,
+      };
+    });
+  };
+
+  /**
+   * Reorder a category (move up or down)
+   */
+  const reorderCategory = (categoryId: string, direction: 'up' | 'down') => {
+    setBudget((prev) => {
+      const sorted = [...prev.categories].sort((a, b) => (a.order || 0) - (b.order || 0));
+      const currentIndex = sorted.findIndex(c => c.id === categoryId);
+      
+      if (currentIndex === -1) return prev;
+      if (direction === 'up' && currentIndex === 0) return prev;
+      if (direction === 'down' && currentIndex === sorted.length - 1) return prev;
+      
+      const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+      
+      // Swap the categories
+      [sorted[currentIndex], sorted[newIndex]] = [sorted[newIndex], sorted[currentIndex]];
+      
+      // Reassign order values
+      const reordered = sorted.map((category, index) => ({ ...category, order: index }));
+      
+      return {
+        ...prev,
+        categories: reordered,
+      };
+    });
   };
 
   /**
@@ -203,11 +344,16 @@ export const useBudget = (userId: string | null) => {
     };
 
     setBudget((prev) => {
-      // Calculate new spent amount for the category
+      // Calculate new spent amount for the category (expenses - reimbursements)
       const categoryExpenses = [...prev.expenses, newExpense].filter(
         (exp) => exp.categoryId === categoryId
       );
-      const newSpent = categoryExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+      const categoryReimbursements = prev.reimbursements.filter(
+        (reimb) => reimb.categoryId === categoryId
+      );
+      const totalExpenses = categoryExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+      const totalReimbursements = categoryReimbursements.reduce((sum, reimb) => sum + reimb.amount, 0);
+      const newSpent = Math.max(0, totalExpenses - totalReimbursements);
 
       return {
         ...prev,
@@ -500,7 +646,12 @@ export const useBudget = (userId: string | null) => {
           const categoryExpenses = finalExpenses.filter(
             (exp) => exp.categoryId === cat.id
           );
-          const newSpent = categoryExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+          const categoryReimbursements = prev.reimbursements.filter(
+            (reimb) => reimb.categoryId === cat.id
+          );
+          const totalExpenses = categoryExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+          const totalReimbursements = categoryReimbursements.reduce((sum, reimb) => sum + reimb.amount, 0);
+          const newSpent = Math.max(0, totalExpenses - totalReimbursements);
           return { ...cat, spent: newSpent };
         }
         return cat;
@@ -536,11 +687,16 @@ export const useBudget = (userId: string | null) => {
 
       const newExpenses = prev.expenses.filter((exp) => exp.id !== expenseId);
       
-      // Recalculate spent for the affected category
+      // Recalculate spent for the affected category (expenses - reimbursements)
       const categoryExpenses = newExpenses.filter(
         (exp) => exp.categoryId === expenseToDelete.categoryId
       );
-      const newSpent = categoryExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+      const categoryReimbursements = prev.reimbursements.filter(
+        (reimb) => reimb.categoryId === expenseToDelete.categoryId
+      );
+      const totalExpenses = categoryExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+      const totalReimbursements = categoryReimbursements.reduce((sum, reimb) => sum + reimb.amount, 0);
+      const newSpent = Math.max(0, totalExpenses - totalReimbursements);
 
       return {
         ...prev,
@@ -553,16 +709,142 @@ export const useBudget = (userId: string | null) => {
   };
 
   /**
+   * Add a new reimbursement and update category spending
+   */
+  const addReimbursement = (categoryId: string, amount: number, description: string, receiptImage?: string) => {
+    const newReimbursement: Reimbursement = {
+      id: generateId(),
+      categoryId,
+      amount: Math.max(0, amount),
+      description: description.trim(),
+      date: new Date().toISOString(),
+      receiptImage,
+    };
+
+    setBudget((prev) => {
+      // Calculate new spent amount for the category (expenses - reimbursements)
+      const categoryExpenses = prev.expenses.filter(
+        (exp) => exp.categoryId === categoryId
+      );
+      const categoryReimbursements = [...prev.reimbursements, newReimbursement].filter(
+        (reimb) => reimb.categoryId === categoryId
+      );
+      const totalExpenses = categoryExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+      const totalReimbursements = categoryReimbursements.reduce((sum, reimb) => sum + reimb.amount, 0);
+      const newSpent = Math.max(0, totalExpenses - totalReimbursements);
+
+      return {
+        ...prev,
+        reimbursements: [...prev.reimbursements, newReimbursement],
+        categories: prev.categories.map((cat) =>
+          cat.id === categoryId ? { ...cat, spent: newSpent } : cat
+        ),
+      };
+    });
+  };
+
+  /**
+   * Update an existing reimbursement and recalculate category spending
+   */
+  const updateReimbursement = (reimbursementId: string, updates: Partial<Omit<Reimbursement, 'id'>>) => {
+    setBudget((prev) => {
+      const reimbursementToUpdate = prev.reimbursements.find((reimb) => reimb.id === reimbursementId);
+      if (!reimbursementToUpdate) return prev;
+
+      const updatedReimbursement = { ...reimbursementToUpdate, ...updates };
+      const updatedReimbursements = prev.reimbursements.map((reimb) =>
+        reimb.id === reimbursementId ? updatedReimbursement : reimb
+      );
+
+      // Recalculate spent for both old and new categories (if category changed)
+      const affectedCategoryIds = new Set([
+        reimbursementToUpdate.categoryId,
+        updatedReimbursement.categoryId,
+      ]);
+
+      const updatedCategories = prev.categories.map((cat) => {
+        if (affectedCategoryIds.has(cat.id)) {
+          const categoryExpenses = prev.expenses.filter(
+            (exp) => exp.categoryId === cat.id
+          );
+          const categoryReimbursements = updatedReimbursements.filter(
+            (reimb) => reimb.categoryId === cat.id
+          );
+          const totalExpenses = categoryExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+          const totalReimbursements = categoryReimbursements.reduce((sum, reimb) => sum + reimb.amount, 0);
+          const newSpent = Math.max(0, totalExpenses - totalReimbursements);
+          return { ...cat, spent: newSpent };
+        }
+        return cat;
+      });
+
+      return {
+        ...prev,
+        reimbursements: updatedReimbursements,
+        categories: updatedCategories,
+      };
+    });
+  };
+
+  /**
+   * Delete a reimbursement and recalculate category spending
+   */
+  const deleteReimbursement = async (reimbursementId: string) => {
+    // First, delete the receipt image from Storage if it exists
+    const reimbursementToDelete = budget.reimbursements.find((reimb) => reimb.id === reimbursementId);
+    if (reimbursementToDelete?.receiptImage && StorageService.isStorageURL(reimbursementToDelete.receiptImage)) {
+      try {
+        await StorageService.deleteReceiptImage(reimbursementToDelete.receiptImage);
+      } catch (error) {
+        console.error('Error deleting receipt image:', error);
+        // Continue with reimbursement deletion even if image deletion fails
+      }
+    }
+
+    setBudget((prev) => {
+      const reimbursementToDelete = prev.reimbursements.find((reimb) => reimb.id === reimbursementId);
+      if (!reimbursementToDelete) return prev;
+
+      const newReimbursements = prev.reimbursements.filter((reimb) => reimb.id !== reimbursementId);
+      
+      // Recalculate spent for the affected category (expenses - reimbursements)
+      const categoryExpenses = prev.expenses.filter(
+        (exp) => exp.categoryId === reimbursementToDelete.categoryId
+      );
+      const categoryReimbursements = newReimbursements.filter(
+        (reimb) => reimb.categoryId === reimbursementToDelete.categoryId
+      );
+      const totalExpenses = categoryExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+      const totalReimbursements = categoryReimbursements.reduce((sum, reimb) => sum + reimb.amount, 0);
+      const newSpent = Math.max(0, totalExpenses - totalReimbursements);
+
+      return {
+        ...prev,
+        reimbursements: newReimbursements,
+        categories: prev.categories.map((cat) =>
+          cat.id === reimbursementToDelete.categoryId ? { ...cat, spent: newSpent } : cat
+        ),
+      };
+    });
+  };
+
+  /**
    * Import categories from Excel file
    */
   const importCategories = (categories: Array<{ name: string; allocated: number }>) => {
     setBudget((prev) => {
-      const newCategories = categories.map((cat) => ({
+      // Find the maximum order value and start from there
+      const maxOrder = prev.categories.length > 0
+        ? Math.max(...prev.categories.map(c => c.order || 0))
+        : -1;
+
+      const newCategories = categories.map((cat, index) => ({
         id: generateId(),
         name: cat.name,
         allocated: cat.allocated,
         spent: 0,
         color: `#${Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')}`,
+        order: maxOrder + 1 + index,
       }));
 
       return {
@@ -843,10 +1125,26 @@ export const useBudget = (userId: string | null) => {
       if (existingArchive) {
         console.log(`Merging expenses into existing archive for ${month}`);
         
-        // Merge expenses from existing archive with new expenses
+        // Merge expenses and reimbursements from existing archive with new ones
         const mergedExpenses = [...existingArchive.expenses, ...prev.expenses];
+        const mergedReimbursements = [...existingArchive.reimbursements, ...prev.reimbursements];
         
-        // Create updated category snapshots by merging spending
+        // Create updated category snapshots by recalculating spending from merged expenses and reimbursements
+        const categorySpendingMap = new Map<string, number>();
+        
+        // Calculate spending from expenses
+        mergedExpenses.forEach(exp => {
+          const current = categorySpendingMap.get(exp.categoryId) || 0;
+          categorySpendingMap.set(exp.categoryId, current + exp.amount);
+        });
+        
+        // Subtract reimbursements
+        mergedReimbursements.forEach(reimb => {
+          const current = categorySpendingMap.get(reimb.categoryId) || 0;
+          categorySpendingMap.set(reimb.categoryId, current - reimb.amount);
+        });
+        
+        // Create category snapshots
         const categoryMap = new Map();
         
         // Start with existing snapshots
@@ -854,14 +1152,15 @@ export const useBudget = (userId: string | null) => {
           categoryMap.set(cat.id, { ...cat });
         });
         
-        // Merge with current categories
+        // Merge with current categories and update spending
         prev.categories.forEach(cat => {
+          const calculatedSpent = Math.max(0, categorySpendingMap.get(cat.id) || 0);
           if (categoryMap.has(cat.id)) {
-            // Add current spending to existing
+            // Update existing category
             const existing = categoryMap.get(cat.id);
             categoryMap.set(cat.id, {
               ...existing,
-              spent: existing.spent + cat.spent,
+              spent: calculatedSpent,
               allocated: cat.allocated, // Use current allocation
             });
           } else {
@@ -870,21 +1169,33 @@ export const useBudget = (userId: string | null) => {
               id: cat.id,
               name: cat.name,
               allocated: cat.allocated,
-              spent: cat.spent,
+              spent: calculatedSpent,
               color: cat.color,
             });
           }
         });
         
         const mergedCategorySnapshots = Array.from(categoryMap.values());
-        const mergedTotalSpent = mergedExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+        // Merge additional income
+        const mergedAdditionalIncome = [...existingArchive.additionalIncome, ...prev.additionalIncome];
+
+        const totalExpenses = mergedExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+        const totalReimbursements = mergedReimbursements.reduce((sum, reimb) => sum + reimb.amount, 0);
+        const mergedTotalSpent = Math.max(0, totalExpenses - totalReimbursements);
+        
+        // Calculate total budget (salary + additional income)
+        const totalAdditionalIncome = mergedAdditionalIncome.reduce((sum, inc) => sum + inc.amount, 0);
+        const calculatedTotalBudget = prev.salaryIncome + totalAdditionalIncome;
         
         // Update existing archive
         const updatedArchive: MonthlyArchive = {
           ...existingArchive,
           expenses: mergedExpenses,
+          reimbursements: mergedReimbursements,
+          additionalIncome: mergedAdditionalIncome,
           categorySnapshots: mergedCategorySnapshots,
-          totalBudget: updateBudget ? prev.totalBudget : existingArchive.totalBudget, // Respect user's choice
+          salaryIncome: updateBudget ? prev.salaryIncome : existingArchive.salaryIncome,
+          totalBudget: updateBudget ? calculatedTotalBudget : existingArchive.totalBudget, // Respect user's choice
           totalSpent: mergedTotalSpent,
           archivedDate: new Date().toISOString(), // Update archive date
         };
@@ -920,6 +1231,8 @@ export const useBudget = (userId: string | null) => {
         return {
           ...prev,
           expenses: newRecurringExpenses, // Populate recurring expenses
+          reimbursements: [], // Clear reimbursements for new month
+          additionalIncome: [], // Clear additional income for new month
           categories: updatedCategories,
           monthlyArchives: updatedArchives.sort((a, b) => 
             b.month.localeCompare(a.month) // Sort newest first
@@ -935,14 +1248,23 @@ export const useBudget = (userId: string | null) => {
           color: cat.color,
         }));
         
-        const totalSpent = prev.expenses.reduce((sum, exp) => sum + exp.amount, 0);
+        const totalExpenses = prev.expenses.reduce((sum, exp) => sum + exp.amount, 0);
+        const totalReimbursements = prev.reimbursements.reduce((sum, reimb) => sum + reimb.amount, 0);
+        const totalSpent = Math.max(0, totalExpenses - totalReimbursements);
+        
+        // Calculate total budget (salary + additional income)
+        const totalAdditionalIncome = prev.additionalIncome.reduce((sum, inc) => sum + inc.amount, 0);
+        const calculatedTotalBudget = prev.salaryIncome + totalAdditionalIncome;
         
         const archive: MonthlyArchive = {
           id: generateId(),
           month,
           expenses: [...prev.expenses], // Clone current expenses
+          reimbursements: [...prev.reimbursements], // Clone current reimbursements
+          additionalIncome: [...prev.additionalIncome], // Clone current additional income
           categorySnapshots,
-          totalBudget: prev.totalBudget,
+          salaryIncome: prev.salaryIncome,
+          totalBudget: calculatedTotalBudget,
           totalSpent,
           archivedDate: new Date().toISOString(),
         };
@@ -975,6 +1297,8 @@ export const useBudget = (userId: string | null) => {
         return {
           ...prev,
           expenses: newRecurringExpenses, // Populate recurring expenses
+          reimbursements: [], // Clear reimbursements for new month
+          additionalIncome: [], // Clear additional income for new month
           categories: updatedCategories,
           monthlyArchives: [...existingArchives, archive].sort((a, b) => 
             b.month.localeCompare(a.month) // Sort newest first
@@ -1343,6 +1667,244 @@ export const useBudget = (userId: string | null) => {
   };
 
   /**
+   * Update a reimbursement within a specific archived month
+   */
+  const updateArchivedReimbursement = (
+    archiveId: string,
+    reimbursementId: string,
+    updates: Partial<Omit<Reimbursement, 'id'>>
+  ) => {
+    setBudget((prev) => {
+      const updatedArchives = (prev.monthlyArchives || []).map((archive) => {
+        if (archive.id !== archiveId) return archive;
+
+        // Update the reimbursement
+        const updatedReimbursements = archive.reimbursements.map((reimb) =>
+          reimb.id === reimbursementId ? { ...reimb, ...updates } : reimb
+        );
+
+        // Recalculate category spending (expenses - reimbursements)
+        const categoryMap = new Map<string, number>();
+        archive.expenses.forEach((exp) => {
+          const currentSpent = categoryMap.get(exp.categoryId) || 0;
+          categoryMap.set(exp.categoryId, currentSpent + exp.amount);
+        });
+        
+        // Subtract reimbursements
+        updatedReimbursements.forEach((reimb) => {
+          const currentSpent = categoryMap.get(reimb.categoryId) || 0;
+          categoryMap.set(reimb.categoryId, currentSpent - reimb.amount);
+        });
+
+        // Update category snapshots with new spending
+        const updatedCategorySnapshots = archive.categorySnapshots.map((cat) => ({
+          ...cat,
+          spent: Math.max(0, categoryMap.get(cat.id) || 0),
+        }));
+
+        // Recalculate total spent
+        const totalExpenses = archive.expenses.reduce((sum, exp) => sum + exp.amount, 0);
+        const totalReimbursements = updatedReimbursements.reduce((sum, reimb) => sum + reimb.amount, 0);
+        const totalSpent = Math.max(0, totalExpenses - totalReimbursements);
+
+        return {
+          ...archive,
+          reimbursements: updatedReimbursements,
+          categorySnapshots: updatedCategorySnapshots,
+          totalSpent,
+        };
+      });
+
+      return {
+        ...prev,
+        monthlyArchives: updatedArchives,
+      };
+    });
+  };
+
+  /**
+   * Delete a reimbursement from a specific archived month
+   */
+  const deleteArchivedReimbursement = async (archiveId: string, reimbursementId: string) => {
+    // Find the reimbursement to check for receipt image
+    const archive = budget.monthlyArchives?.find((a) => a.id === archiveId);
+    const reimbursementToDelete = archive?.reimbursements.find((reimb) => reimb.id === reimbursementId);
+
+    // Delete receipt image if it exists in Firebase Storage
+    if (reimbursementToDelete?.receiptImage && StorageService.isStorageURL(reimbursementToDelete.receiptImage)) {
+      try {
+        await StorageService.deleteReceiptImage(reimbursementToDelete.receiptImage);
+      } catch (error) {
+        console.error('Error deleting receipt image:', error);
+      }
+    }
+
+    setBudget((prev) => {
+      const updatedArchives = (prev.monthlyArchives || []).map((archive) => {
+        if (archive.id !== archiveId) return archive;
+
+        // Remove the reimbursement
+        const updatedReimbursements = archive.reimbursements.filter((reimb) => reimb.id !== reimbursementId);
+
+        // Recalculate category spending (expenses - reimbursements)
+        const categoryMap = new Map<string, number>();
+        archive.expenses.forEach((exp) => {
+          const currentSpent = categoryMap.get(exp.categoryId) || 0;
+          categoryMap.set(exp.categoryId, currentSpent + exp.amount);
+        });
+        
+        // Subtract reimbursements
+        updatedReimbursements.forEach((reimb) => {
+          const currentSpent = categoryMap.get(reimb.categoryId) || 0;
+          categoryMap.set(reimb.categoryId, currentSpent - reimb.amount);
+        });
+
+        // Update category snapshots with new spending
+        const updatedCategorySnapshots = archive.categorySnapshots.map((cat) => ({
+          ...cat,
+          spent: Math.max(0, categoryMap.get(cat.id) || 0),
+        }));
+
+        // Recalculate total spent
+        const totalExpenses = archive.expenses.reduce((sum, exp) => sum + exp.amount, 0);
+        const totalReimbursements = updatedReimbursements.reduce((sum, reimb) => sum + reimb.amount, 0);
+        const totalSpent = Math.max(0, totalExpenses - totalReimbursements);
+
+        return {
+          ...archive,
+          reimbursements: updatedReimbursements,
+          categorySnapshots: updatedCategorySnapshots,
+          totalSpent,
+        };
+      });
+
+      return {
+        ...prev,
+        monthlyArchives: updatedArchives,
+      };
+    });
+  };
+
+  /**
+   * Add a new expense to a specific archived month
+   */
+  const addExpenseToArchive = (archiveId: string, categoryId: string, amount: number, description: string, receiptImage?: string) => {
+    const newExpense: Expense = {
+      id: generateId(),
+      categoryId,
+      amount: Math.max(0, amount),
+      description: description.trim(),
+      date: new Date().toISOString(), // Use current date
+      receiptImage,
+      isRecurring: false,
+    };
+
+    setBudget((prev) => {
+      const updatedArchives = (prev.monthlyArchives || []).map((archive) => {
+        if (archive.id !== archiveId) return archive;
+
+        // Add the expense
+        const updatedExpenses = [...archive.expenses, newExpense];
+
+        // Recalculate category spending (expenses - reimbursements)
+        const categoryMap = new Map<string, number>();
+        updatedExpenses.forEach((exp) => {
+          const currentSpent = categoryMap.get(exp.categoryId) || 0;
+          categoryMap.set(exp.categoryId, currentSpent + exp.amount);
+        });
+        
+        // Subtract reimbursements
+        archive.reimbursements.forEach((reimb) => {
+          const currentSpent = categoryMap.get(reimb.categoryId) || 0;
+          categoryMap.set(reimb.categoryId, currentSpent - reimb.amount);
+        });
+
+        // Update category snapshots with new spending
+        const updatedCategorySnapshots = archive.categorySnapshots.map((cat) => ({
+          ...cat,
+          spent: Math.max(0, categoryMap.get(cat.id) || 0),
+        }));
+
+        // Recalculate total spent
+        const totalExpenses = updatedExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+        const totalReimbursements = archive.reimbursements.reduce((sum, reimb) => sum + reimb.amount, 0);
+        const totalSpent = Math.max(0, totalExpenses - totalReimbursements);
+
+        return {
+          ...archive,
+          expenses: updatedExpenses,
+          categorySnapshots: updatedCategorySnapshots,
+          totalSpent,
+        };
+      });
+
+      return {
+        ...prev,
+        monthlyArchives: updatedArchives,
+      };
+    });
+  };
+
+  /**
+   * Add a new reimbursement to a specific archived month
+   */
+  const addReimbursementToArchive = (archiveId: string, categoryId: string, amount: number, description: string, receiptImage?: string) => {
+    const newReimbursement: Reimbursement = {
+      id: generateId(),
+      categoryId,
+      amount: Math.max(0, amount),
+      description: description.trim(),
+      date: new Date().toISOString(), // Use current date
+      receiptImage,
+    };
+
+    setBudget((prev) => {
+      const updatedArchives = (prev.monthlyArchives || []).map((archive) => {
+        if (archive.id !== archiveId) return archive;
+
+        // Add the reimbursement
+        const updatedReimbursements = [...archive.reimbursements, newReimbursement];
+
+        // Recalculate category spending (expenses - reimbursements)
+        const categoryMap = new Map<string, number>();
+        archive.expenses.forEach((exp) => {
+          const currentSpent = categoryMap.get(exp.categoryId) || 0;
+          categoryMap.set(exp.categoryId, currentSpent + exp.amount);
+        });
+        
+        // Subtract reimbursements
+        updatedReimbursements.forEach((reimb) => {
+          const currentSpent = categoryMap.get(reimb.categoryId) || 0;
+          categoryMap.set(reimb.categoryId, currentSpent - reimb.amount);
+        });
+
+        // Update category snapshots with new spending
+        const updatedCategorySnapshots = archive.categorySnapshots.map((cat) => ({
+          ...cat,
+          spent: Math.max(0, categoryMap.get(cat.id) || 0),
+        }));
+
+        // Recalculate total spent
+        const totalExpenses = archive.expenses.reduce((sum, exp) => sum + exp.amount, 0);
+        const totalReimbursements = updatedReimbursements.reduce((sum, reimb) => sum + reimb.amount, 0);
+        const totalSpent = Math.max(0, totalExpenses - totalReimbursements);
+
+        return {
+          ...archive,
+          reimbursements: updatedReimbursements,
+          categorySnapshots: updatedCategorySnapshots,
+          totalSpent,
+        };
+      });
+
+      return {
+        ...prev,
+        monthlyArchives: updatedArchives,
+      };
+    });
+  };
+
+  /**
    * Mark a historic expense as recurring and populate it for all consecutive months and current month
    */
   const markExpenseAsRecurring = (archiveId: string, expenseId: string) => {
@@ -1567,9 +2129,12 @@ export const useBudget = (userId: string | null) => {
    */
   const resetBudget = () => {
     setBudget({
+      salaryIncome: 0,
+      additionalIncome: [],
       totalBudget: 0,
       categories: [],
       expenses: [],
+      reimbursements: [],
       savings: [],
       longTermGoals: [],
       monthlyArchives: [],
@@ -1581,13 +2146,22 @@ export const useBudget = (userId: string | null) => {
     isLoading,
     error,
     setTotalBudget,
+    setSalaryIncome,
+    addAdditionalIncome,
+    updateAdditionalIncome,
+    deleteAdditionalIncome,
+    getTotalBudget,
     addCategory,
     updateCategory,
     deleteCategory,
+    reorderCategory,
     updateSpending,
     addExpense,
     updateExpense,
     deleteExpense,
+    addReimbursement,
+    updateReimbursement,
+    deleteReimbursement,
     importCategories,
     setSavingsGoal,
     calculateActualSavings,
@@ -1602,6 +2176,10 @@ export const useBudget = (userId: string | null) => {
     deleteArchive,
     updateArchivedExpense,
     deleteArchivedExpense,
+    updateArchivedReimbursement,
+    deleteArchivedReimbursement,
+    addExpenseToArchive,
+    addReimbursementToArchive,
     markExpenseAsRecurring,
     resetBudget,
   };

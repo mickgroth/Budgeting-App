@@ -4,18 +4,20 @@ import { BudgetSummary } from './components/BudgetSummary';
 import { CategoryCard } from './components/CategoryCard';
 import { AddCategoryForm } from './components/AddCategoryForm';
 import { AddExpenseScreen } from './components/AddExpenseScreen';
+import { AddReimbursementScreen } from './components/AddReimbursementScreen';
 import { ExpensesList } from './components/ExpensesList';
 import { ImportBudgetExcel } from './components/ImportBudgetExcel';
 import { SavingsTracker } from './components/SavingsTracker';
 import { HistoricExpenses } from './components/HistoricExpenses';
 import { MonthlyComparison } from './components/MonthlyComparison';
 import { ArchiveMonthModal } from './components/ArchiveMonthModal';
+import { AddIncomeModal } from './components/AddIncomeModal';
 import { AuthScreen } from './components/AuthScreen';
 import { UserProfile } from './components/UserProfile';
 import { AuthService } from './services/authService';
 import './App.css';
 
-type View = 'budget' | 'add-expense' | 'savings' | 'historic' | 'comparison';
+type View = 'budget' | 'add-expense' | 'add-reimbursement' | 'savings' | 'historic' | 'comparison';
 
 /**
  * Main application component for the Budget Tracker
@@ -25,7 +27,9 @@ function App() {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [currentView, setCurrentView] = useState<View>('budget');
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [successMessageType, setSuccessMessageType] = useState<'expense' | 'reimbursement'>('expense');
   const [showArchiveModal, setShowArchiveModal] = useState(false);
+  const [showIncomeModal, setShowIncomeModal] = useState(false);
 
   // Handle hash-based navigation for comparison view
   useEffect(() => {
@@ -62,12 +66,20 @@ function App() {
     isLoading,
     error,
     setTotalBudget,
+    setSalaryIncome,
+    addAdditionalIncome,
+    updateAdditionalIncome,
+    deleteAdditionalIncome,
     addCategory,
     updateCategory,
     deleteCategory,
+    reorderCategory,
     addExpense,
     updateExpense,
     deleteExpense,
+    addReimbursement,
+    updateReimbursement,
+    deleteReimbursement,
     importCategories,
     setSavingsGoal,
     calculateActualSavings,
@@ -82,6 +94,10 @@ function App() {
     deleteArchive,
     updateArchivedExpense,
     deleteArchivedExpense,
+    updateArchivedReimbursement,
+    deleteArchivedReimbursement,
+    addExpenseToArchive,
+    addReimbursementToArchive,
     markExpenseAsRecurring,
     resetBudget,
   } = useBudget(currentUser?.uid || null);
@@ -118,11 +134,23 @@ function App() {
   // Handle adding expense with success feedback
   const handleAddExpense = (categoryId: string, amount: number, description: string, receiptImage?: string, isRecurring?: boolean) => {
     addExpense(categoryId, amount, description, receiptImage, isRecurring);
+    setSuccessMessageType('expense');
+    setShowSuccessMessage(true);
+  };
+
+  // Handle adding reimbursement with success feedback
+  const handleAddReimbursement = (categoryId: string, amount: number, description: string, receiptImage?: string) => {
+    addReimbursement(categoryId, amount, description, receiptImage);
+    setSuccessMessageType('reimbursement');
     setShowSuccessMessage(true);
   };
 
   const handleAddExpenseView = () => {
     setCurrentView('add-expense');
+  };
+
+  const handleAddReimbursementView = () => {
+    setCurrentView('add-reimbursement');
   };
 
   const handleOpenSavings = () => {
@@ -141,9 +169,16 @@ function App() {
       return expenseMonth === month;
     });
     
+    const currentMonthReimbursements = budget.reimbursements.filter((reimb) => {
+      const reimbursementMonth = reimb.date.substring(0, 7); // YYYY-MM
+      return reimbursementMonth === month;
+    });
+    
     // If current expenses exist for this month, use them
-    if (currentMonthExpenses.length > 0) {
-      return currentMonthExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+    if (currentMonthExpenses.length > 0 || currentMonthReimbursements.length > 0) {
+      const totalExpenses = currentMonthExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+      const totalReimbursements = currentMonthReimbursements.reduce((sum, reimb) => sum + reimb.amount, 0);
+      return Math.max(0, totalExpenses - totalReimbursements);
     }
     
     // Otherwise check archived expenses
@@ -192,6 +227,22 @@ function App() {
     );
   }
 
+  // Render Add Reimbursement Screen
+  if (currentView === 'add-reimbursement') {
+    return (
+      <div className="app">
+        <div className="container">
+          <AddReimbursementScreen
+            userId={currentUser.uid}
+            categories={budget.categories}
+            onAddReimbursement={handleAddReimbursement}
+            onBack={handleBackToBudget}
+          />
+        </div>
+      </div>
+    );
+  }
+
   // Render Historic Expenses Screen
   if (currentView === 'historic') {
     return (
@@ -203,9 +254,14 @@ function App() {
             onDeleteArchive={deleteArchive}
             onUpdateArchivedExpense={updateArchivedExpense}
             onDeleteArchivedExpense={deleteArchivedExpense}
+            onUpdateArchivedReimbursement={updateArchivedReimbursement}
+            onDeleteArchivedReimbursement={deleteArchivedReimbursement}
+            onAddExpenseToArchive={addExpenseToArchive}
+            onAddReimbursementToArchive={addReimbursementToArchive}
             onMarkExpenseAsRecurring={markExpenseAsRecurring}
             onUpdateCategory={updateCategory}
             onDeleteCategory={deleteCategory}
+            onReorderCategory={reorderCategory}
             onAddCategory={addCategory}
             onBack={() => setCurrentView('budget')}
           />
@@ -291,12 +347,14 @@ function App() {
         )}
         {showSuccessMessage && (
           <div className="success-banner">
-            ✅ Expense added successfully!
+            ✅ {successMessageType === 'expense' ? 'Expense' : 'Reimbursement'} added successfully!
           </div>
         )}
           <BudgetSummary 
             budget={budget} 
             onTotalBudgetChange={setTotalBudget}
+            onSalaryIncomeChange={setSalaryIncome}
+            onAddIncome={() => setShowIncomeModal(true)}
             currentMonthSavingsGoal={getCurrentMonthSavingsGoal()}
           />
           
@@ -316,13 +374,13 @@ function App() {
             <button 
               className="btn-archive"
               onClick={() => {
-                if (budget.expenses.length === 0) {
-                  alert('No expenses to archive for this month.');
+                if (budget.expenses.length === 0 && budget.reimbursements.length === 0) {
+                  alert('No expenses or reimbursements to archive for this month.');
                   return;
                 }
                 setShowArchiveModal(true);
               }}
-              disabled={budget.expenses.length === 0}
+              disabled={budget.expenses.length === 0 && budget.reimbursements.length === 0}
             >
               📦 End of Month
             </button>
@@ -339,14 +397,19 @@ function App() {
           </div>
 
           <div className="categories-grid">
-            {budget.categories.map((category) => (
-              <CategoryCard
-                key={category.id}
-                category={category}
-                onUpdate={updateCategory}
-                onDelete={deleteCategory}
-              />
-            ))}
+            {[...budget.categories]
+              .sort((a, b) => (a.order || 0) - (b.order || 0))
+              .map((category, index, sortedCategories) => (
+                <CategoryCard
+                  key={category.id}
+                  category={category}
+                  onUpdate={updateCategory}
+                  onDelete={deleteCategory}
+                  onReorder={reorderCategory}
+                  isFirst={index === 0}
+                  isLast={index === sortedCategories.length - 1}
+                />
+              ))}
           </div>
 
           <AddCategoryForm onAdd={addCategory} />
@@ -363,25 +426,37 @@ function App() {
         {budget.categories.length > 0 && (
           <div className="expenses-section">
             <div className="expenses-section-header">
-              <h2>Expenses</h2>
-              <button 
-                className="btn-add-expense"
-                onClick={handleAddExpenseView}
-              >
-                + Add Expense
-              </button>
+              <h2>Expenses & Reimbursements</h2>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button 
+                  className="btn-add-expense"
+                  onClick={handleAddExpenseView}
+                >
+                  + Add Expense
+                </button>
+                <button 
+                  className="btn-add-expense"
+                  onClick={handleAddReimbursementView}
+                  style={{ background: '#10B981' }}
+                >
+                  💰 Add Reimbursement
+                </button>
+              </div>
             </div>
             
-            {budget.expenses.length > 0 ? (
+            {budget.expenses.length > 0 || budget.reimbursements.length > 0 ? (
               <ExpensesList
                 expenses={budget.expenses}
+                reimbursements={budget.reimbursements}
                 categories={budget.categories}
                 onUpdateExpense={updateExpense}
                 onDeleteExpense={deleteExpense}
+                onUpdateReimbursement={updateReimbursement}
+                onDeleteReimbursement={deleteReimbursement}
               />
             ) : (
               <div className="empty-state">
-                <p>No expenses logged yet. Click "Add Expense" to get started!</p>
+                <p>No expenses or reimbursements logged yet. Click "Add Expense" or "Add Reimbursement" to get started!</p>
               </div>
             )}
           </div>
@@ -409,6 +484,23 @@ function App() {
               alert(`✅ ${displayMonth} archived successfully!\n\nYou can now start fresh for the new month.`);
             }}
             onCancel={() => setShowArchiveModal(false)}
+          />
+        )}
+
+        {/* Income Modal */}
+        {showIncomeModal && (
+          <AddIncomeModal
+            existingIncome={budget.additionalIncome}
+            onAddIncome={(amount, description) => {
+              addAdditionalIncome(amount, description);
+            }}
+            onUpdateIncome={(id, amount, description) => {
+              updateAdditionalIncome(id, { amount, description });
+            }}
+            onDeleteIncome={(id) => {
+              deleteAdditionalIncome(id);
+            }}
+            onClose={() => setShowIncomeModal(false)}
           />
         )}
       </div>

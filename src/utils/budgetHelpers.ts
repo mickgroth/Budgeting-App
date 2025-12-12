@@ -15,18 +15,28 @@ export const getTotalSpent = (categories: BudgetCategory[]): number => {
 };
 
 /**
+ * Calculate the total budget (salary + additional income)
+ */
+export const getCalculatedTotalBudget = (budget: Budget): number => {
+  const additionalTotal = budget.additionalIncome.reduce((sum, income) => sum + income.amount, 0);
+  return budget.salaryIncome + additionalTotal;
+};
+
+/**
  * Calculate the remaining budget (total - allocated)
  */
 export const getRemainingBudget = (budget: Budget): number => {
-  return budget.totalBudget - getTotalAllocated(budget.categories);
+  const totalBudget = getCalculatedTotalBudget(budget);
+  return totalBudget - getTotalAllocated(budget.categories);
 };
 
 /**
  * Calculate the percentage of budget allocated
  */
 export const getAllocatedPercentage = (budget: Budget): number => {
-  if (budget.totalBudget === 0) return 0;
-  return (getTotalAllocated(budget.categories) / budget.totalBudget) * 100;
+  const totalBudget = getCalculatedTotalBudget(budget);
+  if (totalBudget === 0) return 0;
+  return (getTotalAllocated(budget.categories) / totalBudget) * 100;
 };
 
 /**

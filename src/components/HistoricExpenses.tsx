@@ -3,6 +3,7 @@ import { MonthlyArchive, Expense, BudgetCategory } from '../types/budget';
 import { formatCurrency } from '../utils/budgetHelpers';
 import { CategoryCard } from './CategoryCard';
 import { AddCategoryForm } from './AddCategoryForm';
+import { AddToArchiveModal } from './AddToArchiveModal';
 
 interface HistoricExpensesProps {
   archives: MonthlyArchive[];
@@ -14,9 +15,18 @@ interface HistoricExpensesProps {
     updates: Partial<Omit<Expense, 'id'>>
   ) => void;
   onDeleteArchivedExpense: (archiveId: string, expenseId: string) => void;
+  onUpdateArchivedReimbursement: (
+    archiveId: string,
+    reimbursementId: string,
+    updates: Partial<Omit<Expense, 'id'>>
+  ) => void;
+  onDeleteArchivedReimbursement: (archiveId: string, reimbursementId: string) => void;
+  onAddExpenseToArchive: (archiveId: string, categoryId: string, amount: number, description: string) => void;
+  onAddReimbursementToArchive: (archiveId: string, categoryId: string, amount: number, description: string) => void;
   onMarkExpenseAsRecurring: (archiveId: string, expenseId: string) => void;
   onUpdateCategory: (id: string, updates: Partial<Omit<BudgetCategory, 'id'>>) => void;
   onDeleteCategory: (id: string) => void;
+  onReorderCategory: (id: string, direction: 'up' | 'down') => void;
   onAddCategory: (name: string, allocated: number) => void;
   onBack: () => void;
 }
@@ -30,21 +40,31 @@ export const HistoricExpenses: React.FC<HistoricExpensesProps> = ({
   onDeleteArchive,
   onUpdateArchivedExpense,
   onDeleteArchivedExpense,
+  onUpdateArchivedReimbursement,
+  onDeleteArchivedReimbursement,
+  onAddExpenseToArchive,
+  onAddReimbursementToArchive,
   onMarkExpenseAsRecurring,
   onUpdateCategory,
   onDeleteCategory,
+  onReorderCategory,
   onAddCategory,
   onBack,
 }) => {
   const [selectedMonth, setSelectedMonth] = useState<string>(
     archives.length > 0 ? archives[0].month : ''
   );
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all');
+  const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>('all'); // 'all', 'expenses', 'reimbursements'
+  const [sortBy, setSortBy] = useState<'date' | 'category'>('date'); // Sort by date or category
   const [viewingReceipt, setViewingReceipt] = useState<Expense | null>(null);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [editingTransactionType, setEditingTransactionType] = useState<'expense' | 'reimbursement' | null>(null);
   const [editAmount, setEditAmount] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editCategoryId, setEditCategoryId] = useState('');
   const [editIsRecurring, setEditIsRecurring] = useState(false);
+  const [showAddModal, setShowAddModal] = useState<'expense' | 'reimbursement' | null>(null);
 
   const formatMonthDisplay = (month: string): string => {
     // month is in format YYYY-MM (e.g., "2025-10" for October 2025)
@@ -59,18 +79,19 @@ export const HistoricExpenses: React.FC<HistoricExpensesProps> = ({
 
   const selectedArchive = archives.find(archive => archive.month === selectedMonth);
 
-  const handleEdit = (expense: Expense) => {
-    setEditingExpense(expense);
-    setEditAmount(expense.amount.toString());
-    setEditDescription(expense.description);
-    // If the expense's category doesn't exist in current categories, use the first category as default
-    const categoryExists = categories.some(cat => cat.id === expense.categoryId);
-    setEditCategoryId(categoryExists ? expense.categoryId : (categories.length > 0 ? categories[0].id : ''));
-    setEditIsRecurring(expense.isRecurring || false);
+  const handleEdit = (transaction: any, transactionType: 'expense' | 'reimbursement') => {
+    setEditingExpense(transaction);
+    setEditingTransactionType(transactionType);
+    setEditAmount(transaction.amount.toString());
+    setEditDescription(transaction.description);
+    // If the transaction's category doesn't exist in current categories, use the first category as default
+    const categoryExists = categories.some(cat => cat.id === transaction.categoryId);
+    setEditCategoryId(categoryExists ? transaction.categoryId : (categories.length > 0 ? categories[0].id : ''));
+    setEditIsRecurring('isRecurring' in transaction ? transaction.isRecurring || false : false);
   };
 
   const handleSaveEdit = () => {
-    if (!editingExpense || !selectedArchive) return;
+    if (!editingExpense || !selectedArchive || !editingTransactionType) return;
 
     if (!editCategoryId) {
       alert('Please select a category');
@@ -88,25 +109,40 @@ export const HistoricExpenses: React.FC<HistoricExpensesProps> = ({
       return;
     }
 
-    onUpdateArchivedExpense(selectedArchive.id, editingExpense.id, {
-      amount,
-      description: editDescription.trim(),
-      categoryId: editCategoryId,
-      isRecurring: editIsRecurring,
-    });
+    if (editingTransactionType === 'expense') {
+      onUpdateArchivedExpense(selectedArchive.id, editingExpense.id, {
+        amount,
+        description: editDescription.trim(),
+        categoryId: editCategoryId,
+        isRecurring: editIsRecurring,
+      });
+    } else {
+      onUpdateArchivedReimbursement(selectedArchive.id, editingExpense.id, {
+        amount,
+        description: editDescription.trim(),
+        categoryId: editCategoryId,
+      });
+    }
 
     setEditingExpense(null);
+    setEditingTransactionType(null);
   };
 
   const handleCancelEdit = () => {
     setEditingExpense(null);
+    setEditingTransactionType(null);
   };
 
-  const handleDeleteExpense = (expenseId: string, description: string) => {
+  const handleDeleteExpense = (transactionId: string, description: string, isReimbursement: boolean) => {
     if (!selectedArchive) return;
     
-    if (window.confirm(`Delete expense "${description}"?`)) {
-      onDeleteArchivedExpense(selectedArchive.id, expenseId);
+    const itemType = isReimbursement ? 'reimbursement' : 'expense';
+    if (window.confirm(`Delete ${itemType} "${description}"?`)) {
+      if (isReimbursement) {
+        onDeleteArchivedReimbursement(selectedArchive.id, transactionId);
+      } else {
+        onDeleteArchivedExpense(selectedArchive.id, transactionId);
+      }
     }
   };
 
@@ -235,14 +271,19 @@ export const HistoricExpenses: React.FC<HistoricExpensesProps> = ({
               <h3>Budget Categories</h3>
             </div>
             <div className="categories-grid">
-              {categories.map((category) => (
-                <CategoryCard
-                  key={category.id}
-                  category={category}
-                  onUpdate={onUpdateCategory}
-                  onDelete={onDeleteCategory}
-                />
-              ))}
+              {[...categories]
+                .sort((a, b) => (a.order || 0) - (b.order || 0))
+                .map((category, index, sortedCategories) => (
+                  <CategoryCard
+                    key={category.id}
+                    category={category}
+                    onUpdate={onUpdateCategory}
+                    onDelete={onDeleteCategory}
+                    onReorder={onReorderCategory}
+                    isFirst={index === 0}
+                    isLast={index === sortedCategories.length - 1}
+                  />
+                ))}
             </div>
             <AddCategoryForm onAdd={onAddCategory} />
             {categories.length === 0 && (
@@ -303,26 +344,145 @@ export const HistoricExpenses: React.FC<HistoricExpensesProps> = ({
 
           {/* Expense List */}
           <div className="expenses-section">
-            <h3>All Expenses ({selectedArchive.expenses.length})</h3>
-            {selectedArchive.expenses.length === 0 ? (
+            <div className="expenses-section-header">
+              <h3>Expenses & Reimbursements ({selectedArchive.expenses.length + selectedArchive.reimbursements.length})</h3>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button 
+                  className="btn-add-expense"
+                  onClick={() => setShowAddModal('expense')}
+                  style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}
+                >
+                  + Add Expense
+                </button>
+                <button 
+                  className="btn-add-expense"
+                  onClick={() => setShowAddModal('reimbursement')}
+                  style={{ background: '#10B981', fontSize: '0.9rem', padding: '0.5rem 1rem' }}
+                >
+                  💰 Add Reimbursement
+                </button>
+              </div>
+            </div>
+
+            {/* Filters and Sort */}
+            <div className="expenses-filter" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '1rem' }}>
+              <div style={{ flex: '1', minWidth: '200px' }}>
+                <label htmlFor="type-filter-historic">Filter by type:</label>
+                <select
+                  id="type-filter-historic"
+                  value={selectedTypeFilter}
+                  onChange={(e) => setSelectedTypeFilter(e.target.value)}
+                  className="filter-select"
+                >
+                  <option value="all">All Transactions ({selectedArchive.expenses.length + selectedArchive.reimbursements.length})</option>
+                  <option value="expenses">Expenses Only ({selectedArchive.expenses.length})</option>
+                  <option value="reimbursements">Reimbursements Only ({selectedArchive.reimbursements.length})</option>
+                </select>
+              </div>
+              <div style={{ flex: '1', minWidth: '200px' }}>
+                <label htmlFor="category-filter-historic">Filter by category:</label>
+                <select
+                  id="category-filter-historic"
+                  value={selectedCategoryFilter}
+                  onChange={(e) => setSelectedCategoryFilter(e.target.value)}
+                  className="filter-select"
+                >
+                  <option value="all">All Categories</option>
+                  {selectedArchive.categorySnapshots
+                    .sort((a, b) => {
+                      const catA = categories.find(c => c.id === a.id);
+                      const catB = categories.find(c => c.id === b.id);
+                      return (catA?.order || 0) - (catB?.order || 0);
+                    })
+                    .map((category) => {
+                      const allTransactions = [
+                        ...selectedArchive.expenses.map(e => ({ ...e, type: 'expense' })),
+                        ...selectedArchive.reimbursements.map(r => ({ ...r, type: 'reimbursement' }))
+                      ];
+                      const count = allTransactions.filter((t) => t.categoryId === category.id).length;
+                      return (
+                        <option key={category.id} value={category.id}>
+                          {category.name} ({count})
+                        </option>
+                      );
+                    })}
+                </select>
+              </div>
+              <div style={{ flex: '1', minWidth: '200px' }}>
+                <label htmlFor="sort-by-historic">Sort by:</label>
+                <select
+                  id="sort-by-historic"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as 'date' | 'category')}
+                  className="filter-select"
+                >
+                  <option value="date">Date & Time (Newest First)</option>
+                  <option value="category">Category (A-Z)</option>
+                </select>
+              </div>
+            </div>
+            {selectedArchive.expenses.length === 0 && selectedArchive.reimbursements.length === 0 ? (
               <div className="empty-state">
-                <p>No expenses recorded for this month</p>
+                <p>No expenses or reimbursements recorded for this month</p>
+                <p style={{ fontSize: '0.9rem', color: '#6B7280', marginTop: '0.5rem' }}>
+                  Click "Add Expense" or "Add Reimbursement" above to add one
+                </p>
               </div>
             ) : (
               <div className="expenses-table">
-                {selectedArchive.expenses
-                  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                  .map((expense) => {
+                {/* Combine expenses and reimbursements */}
+                {(() => {
+                  // Combine all transactions
+                  const allTransactions = [
+                    ...selectedArchive.expenses.map(exp => ({ ...exp, transactionType: 'expense' as const })),
+                    ...selectedArchive.reimbursements.map(reimb => ({ ...reimb, transactionType: 'reimbursement' as const }))
+                  ];
+
+                  // Filter by type
+                  let filteredByType = allTransactions;
+                  if (selectedTypeFilter === 'expenses') {
+                    filteredByType = allTransactions.filter(t => t.transactionType === 'expense');
+                  } else if (selectedTypeFilter === 'reimbursements') {
+                    filteredByType = allTransactions.filter(t => t.transactionType === 'reimbursement');
+                  }
+
+                  // Filter by category
+                  const filteredTransactions = selectedCategoryFilter === 'all'
+                    ? filteredByType
+                    : filteredByType.filter((transaction) => transaction.categoryId === selectedCategoryFilter);
+
+                  // Sort transactions by selected method
+                  const sortedTransactions = [...filteredTransactions].sort((a, b) => {
+                    if (sortBy === 'category') {
+                      // Sort by category name, then by date within category
+                      const catA = selectedArchive.categorySnapshots.find(c => c.id === a.categoryId);
+                      const catB = selectedArchive.categorySnapshots.find(c => c.id === b.categoryId);
+                      const nameA = catA?.name || '';
+                      const nameB = catB?.name || '';
+                      
+                      if (nameA !== nameB) {
+                        return nameA.localeCompare(nameB);
+                      }
+                      // Within same category, sort by date (most recent first)
+                      return new Date(b.date).getTime() - new Date(a.date).getTime();
+                    } else {
+                      // Sort by date (most recent first)
+                      return new Date(b.date).getTime() - new Date(a.date).getTime();
+                    }
+                  });
+
+                  return sortedTransactions.map((transaction) => {
+                    const isReimbursement = transaction.transactionType === 'reimbursement';
                     const category = selectedArchive.categorySnapshots.find(
-                      (cat) => cat.id === expense.categoryId
+                      (cat) => cat.id === transaction.categoryId
                     );
-                    const isEditing = editingExpense?.id === expense.id;
+                    const isEditing = editingExpense?.id === transaction.id;
 
                     if (isEditing) {
                       // Edit mode
                       return (
                         <div
-                          key={expense.id}
+                          key={transaction.id}
                           className="expense-row-archive expense-row-editing"
                           style={{ borderLeftColor: category?.color || '#6B7280' }}
                         >
@@ -350,11 +510,13 @@ export const HistoricExpenses: React.FC<HistoricExpensesProps> = ({
                                   {categories.length === 0 ? (
                                     <option value="">No categories available</option>
                                   ) : (
-                                    categories.map((cat) => (
-                                      <option key={cat.id} value={cat.id}>
-                                        {cat.name}
-                                      </option>
-                                    ))
+                                    [...categories]
+                                      .sort((a, b) => (a.order || 0) - (b.order || 0))
+                                      .map((cat) => (
+                                        <option key={cat.id} value={cat.id}>
+                                          {cat.name}
+                                        </option>
+                                      ))
                                   )}
                                 </select>
                               </div>
@@ -370,22 +532,24 @@ export const HistoricExpenses: React.FC<HistoricExpensesProps> = ({
                                 />
                               </div>
                             </div>
-                            <div className="edit-row">
-                              <div className="edit-field edit-field-full">
-                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                                  <input
-                                    type="checkbox"
-                                    checked={editIsRecurring}
-                                    onChange={(e) => setEditIsRecurring(e.target.checked)}
-                                    style={{ cursor: 'pointer' }}
-                                  />
-                                  <span>Recurring expense</span>
-                                </label>
-                                <small style={{ display: 'block', marginTop: '0.25rem', color: '#6B7280', fontSize: '0.85rem' }}>
-                                  Will be automatically added to new months
-                                </small>
+                            {editingTransactionType === 'expense' && (
+                              <div className="edit-row">
+                                <div className="edit-field edit-field-full">
+                                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={editIsRecurring}
+                                      onChange={(e) => setEditIsRecurring(e.target.checked)}
+                                      style={{ cursor: 'pointer' }}
+                                    />
+                                    <span>Recurring expense</span>
+                                  </label>
+                                  <small style={{ display: 'block', marginTop: '0.25rem', color: '#6B7280', fontSize: '0.85rem' }}>
+                                    Will be automatically added to new months
+                                  </small>
+                                </div>
                               </div>
-                            </div>
+                            )}
                             <div className="edit-actions">
                               <button className="btn-save-edit" onClick={handleSaveEdit}>
                                 ✓ Save
@@ -402,24 +566,36 @@ export const HistoricExpenses: React.FC<HistoricExpensesProps> = ({
                     // View mode
                     return (
                       <div
-                        key={expense.id}
+                        key={transaction.id}
                         className="expense-row-archive"
-                        style={{ borderLeftColor: category?.color || '#6B7280' }}
+                        style={{ 
+                          borderLeftColor: category?.color || '#6B7280',
+                          ...(isReimbursement ? { background: '#F0FDF4' } : {})
+                        }}
                       >
                         <div className="expense-main">
                           <div className="expense-info">
                             <div className="expense-description">
-                              {expense.description}
-                              {expense.isRecurring && (
+                              {isReimbursement && (
+                                <span className="reimbursement-indicator" title="Reimbursement (reduces spending)" style={{ 
+                                  marginRight: '6px', 
+                                  fontSize: '1rem',
+                                  color: '#10B981'
+                                }}>
+                                  💰
+                                </span>
+                              )}
+                              {transaction.description}
+                              {'isRecurring' in transaction && transaction.isRecurring && (
                                 <span className="recurring-indicator" title="Recurring expense">
                                   🔄
                                 </span>
                               )}
-                              {expense.receiptImage && (
+                              {transaction.receiptImage && (
                                 <button
                                   className="receipt-indicator-btn"
                                   title="View receipt"
-                                  onClick={() => setViewingReceipt(expense)}
+                                  onClick={() => setViewingReceipt(transaction as any)}
                                 >
                                   📄
                                 </button>
@@ -433,7 +609,7 @@ export const HistoricExpenses: React.FC<HistoricExpensesProps> = ({
                                 {category?.name || 'Unknown'}
                               </span>
                               <span className="expense-date">
-                                {new Date(expense.date).toLocaleDateString('en-US', {
+                                {new Date(transaction.date).toLocaleDateString('en-US', {
                                   month: 'short',
                                   day: 'numeric',
                                   hour: '2-digit',
@@ -442,13 +618,15 @@ export const HistoricExpenses: React.FC<HistoricExpensesProps> = ({
                               </span>
                             </div>
                           </div>
-                          <div className="expense-amount">{formatCurrency(expense.amount)}</div>
+                          <div className="expense-amount" style={isReimbursement ? { color: '#10B981' } : {}}>
+                            {isReimbursement ? '-' : ''}{formatCurrency(transaction.amount)}
+                          </div>
                         </div>
                         <div className="expense-actions">
-                          {!expense.isRecurring && (
+                          {!isReimbursement && !('isRecurring' in transaction && transaction.isRecurring) && (
                             <button
                               className="btn-recurring-expense"
-                              onClick={() => handleMarkAsRecurring(expense.id, expense.description)}
+                              onClick={() => handleMarkAsRecurring(transaction.id, transaction.description)}
                               title="Mark as recurring"
                             >
                               🔄
@@ -456,22 +634,23 @@ export const HistoricExpenses: React.FC<HistoricExpensesProps> = ({
                           )}
                           <button
                             className="btn-edit-expense"
-                            onClick={() => handleEdit(expense)}
-                            title="Edit expense"
+                            onClick={() => handleEdit(transaction as any, isReimbursement ? 'reimbursement' : 'expense')}
+                            title={`Edit ${isReimbursement ? 'reimbursement' : 'expense'}`}
                           >
                             ✏️
                           </button>
                           <button
                             className="btn-delete-expense"
-                            onClick={() => handleDeleteExpense(expense.id, expense.description)}
-                            title="Delete expense"
+                            onClick={() => handleDeleteExpense(transaction.id, transaction.description, isReimbursement)}
+                            title={`Delete ${isReimbursement ? 'reimbursement' : 'expense'}`}
                           >
                             🗑️
                           </button>
                         </div>
                       </div>
                     );
-                  })}
+                  });
+                })()}
               </div>
             )}
           </div>
@@ -566,6 +745,24 @@ export const HistoricExpenses: React.FC<HistoricExpensesProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Add To Archive Modal */}
+      {showAddModal && selectedArchive && (
+        <AddToArchiveModal
+          archiveMonth={selectedArchive.month}
+          categories={categories}
+          type={showAddModal}
+          onAdd={(categoryId, amount, description) => {
+            if (showAddModal === 'expense') {
+              onAddExpenseToArchive(selectedArchive.id, categoryId, amount, description);
+            } else {
+              onAddReimbursementToArchive(selectedArchive.id, categoryId, amount, description);
+            }
+            setShowAddModal(null);
+          }}
+          onCancel={() => setShowAddModal(null)}
+        />
       )}
     </div>
   );

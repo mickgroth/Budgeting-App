@@ -7,6 +7,7 @@ export interface BudgetCategory {
   allocated: number;
   spent: number;
   color: string;
+  order: number; // Display order (lower numbers appear first)
 }
 
 /**
@@ -20,6 +21,28 @@ export interface Expense {
   date: string; // ISO date string
   receiptImage?: string; // Firebase Storage URL or Base64 data URL (for backward compatibility)
   isRecurring?: boolean; // If true, this expense will be automatically populated for new months
+}
+
+/**
+ * Represents a reimbursement entry (reduces spending in a category)
+ */
+export interface Reimbursement {
+  id: string;
+  categoryId: string;
+  amount: number;
+  description: string;
+  date: string; // ISO date string
+  receiptImage?: string; // Firebase Storage URL or Base64 data URL
+}
+
+/**
+ * Represents additional income entry (non-salary income for the month)
+ */
+export interface AdditionalIncome {
+  id: string;
+  amount: number;
+  description: string;
+  date: string; // ISO date string
 }
 
 /**
@@ -65,8 +88,11 @@ export interface MonthlyArchive {
   id: string;
   month: string; // Format: YYYY-MM
   expenses: Expense[];
+  reimbursements: Reimbursement[];
+  additionalIncome: AdditionalIncome[];
   categorySnapshots: CategorySnapshot[];
-  totalBudget: number;
+  salaryIncome: number; // Snapshot of salary income for this month
+  totalBudget: number; // Total budget (salary + additional income)
   totalSpent: number;
   archivedDate: string; // ISO date string
 }
@@ -75,9 +101,12 @@ export interface MonthlyArchive {
  * Represents the overall budget state
  */
 export interface Budget {
-  totalBudget: number;
+  salaryIncome: number; // Fixed monthly salary income
+  additionalIncome: AdditionalIncome[]; // Current month's additional income entries
+  totalBudget: number; // Deprecated - kept for backward compatibility (will be calculated from salary + additional)
   categories: BudgetCategory[];
   expenses: Expense[]; // Current month's expenses only
+  reimbursements: Reimbursement[]; // Current month's reimbursements only
   savings: MonthlySavings[];
   longTermGoals: LongTermSavingsGoal[];
   monthlyArchives: MonthlyArchive[]; // Historic data
