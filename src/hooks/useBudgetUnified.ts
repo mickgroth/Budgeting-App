@@ -37,7 +37,9 @@ export function useBudgetUnified(userId: string | null) {
     const loadBudget = async () => {
       try {
         setIsLoading(true);
+        console.log('Loading budget from Firebase for user:', userId);
         const firebaseBudget = await FirebaseService.getBudget(userId);
+        console.log('Loaded budget from Firebase:', firebaseBudget);
         
         if (firebaseBudget) {
           // Check if this is old format (has monthlyArchives) or new format (has months)
@@ -89,12 +91,21 @@ export function useBudgetUnified(userId: string | null) {
   useEffect(() => {
     if (!userId || isLoading) return;
 
+    // Validate budget structure before saving
+    if (!budget || !Array.isArray(budget.months)) {
+      console.warn('Invalid budget structure, skipping save');
+      return;
+    }
+
     const saveBudget = async () => {
       try {
+        console.log('Saving budget to Firebase...');
         await FirebaseService.saveBudget(userId, budget);
-      } catch (err) {
+        console.log('Budget saved successfully');
+      } catch (err: any) {
         console.error('Error saving budget:', err);
-        setError('Failed to save budget');
+        console.error('Budget data:', budget);
+        setError(`Failed to save budget: ${err.message || 'Unknown error'}`);
       }
     };
 
@@ -104,12 +115,13 @@ export function useBudgetUnified(userId: string | null) {
 
   // Auto-create new month if we're in a new month
   useEffect(() => {
-    if (isLoading || !budget.months.length) return;
+    if (isLoading || !budget || !Array.isArray(budget.months) || budget.months.length === 0) return;
 
     const currentMonth = getCurrentMonthString();
-    const monthExists = budget.months.some(m => m.month === currentMonth);
+    const monthExists = budget.months.some(m => m && m.month === currentMonth);
 
     if (!monthExists) {
+      console.log('Current month not found, auto-creating:', currentMonth);
       // We're in a new month! Create it
       autoCreateNewMonth(currentMonth);
     }
@@ -119,60 +131,90 @@ export function useBudgetUnified(userId: string | null) {
    * Migrate old budget format to unified format
    */
   function migrateOldBudgetToUnified(oldBudget: any): Budget {
+    console.log('Starting migration from old budget format:', oldBudget);
     const migratedMonths: MonthData[] = [];
     
     // Migrate current month data
     if (oldBudget.expenses || oldBudget.categories) {
       const currentMonthStr = getCurrentMonthString();
+      console.log('Migrating current month data for:', currentMonthStr);
       const currentMonth: MonthData = {
         id: generateId(),
         month: currentMonthStr,
-        expenses: oldBudget.expenses || [],
-        reimbursements: oldBudget.reimbursements || [],
-        additionalIncome: oldBudget.additionalIncome || [],
-        categories: (oldBudget.categories || []).map((cat: any, index: number) => ({
-          ...cat,
-          order: cat.order !== undefined ? cat.order : index,
-        })),
+        expenses: Array.isArray(oldBudget.expenses) ? oldBudget.expenses : [],
+        reimbursements: Array.isArray(oldBudget.reimbursements) ? oldBudget.reimbursements : [],
+        additionalIncome: Array.isArray(oldBudget.additionalIncome) ? oldBudget.additionalIncome : [],
+        categories: Array.isArray(oldBudget.categories) 
+          ? oldBudget.categories.map((cat: any, index: number) => ({
+              ...cat,
+              order: cat.order !== undefined ? cat.order : index,
+            }))
+          : [],
         salaryIncome: oldBudget.salaryIncome || oldBudget.totalBudget || 0,
         createdDate: new Date().toISOString(),
       };
       migratedMonths.push(currentMonth);
+      console.log('Created current month:', currentMonth);
     }
 
     // Migrate archived months
-    if (oldBudget.monthlyArchives) {
-      oldBudget.monthlyArchives.forEach((archive: MonthlyArchive) => {
+    if (Array.isArray(oldBudget.monthlyArchives) && oldBudget.monthlyArchives.length > 0) {
+      console.log('Migrating', oldBudget.monthlyArchives.length, 'archived months');
+      oldBudget.monthlyArchives.forEach((archive: any) => {
         const monthData: MonthData = {
-          id: archive.id,
-          month: archive.month,
-          expenses: archive.expenses || [],
-          reimbursements: archive.reimbursements || [],
-          additionalIncome: archive.additionalIncome || [],
-          categories: (archive.categorySnapshots || []).map((snap: any, index: number) => ({
-            id: snap.id,
-            name: snap.name,
-            allocated: snap.allocated,
-            spent: snap.spent,
-            color: snap.color,
-            order: index,
-          })),
+          id: archive.id || generateId(),
+          month: archive.month || '2025-01',
+          expenses: Array.isArray(archive.expenses) ? archive.expenses : [],
+          reimbursements: Array.isArray(archive.reimbursements) ? archive.reimbursements : [],
+          additionalIncome: Array.isArray(archive.additionalIncome) ? archive.additionalIncome : [],
+          categories: Array.isArray(archive.categorySnapshots) 
+            ? archive.categorySnapshots.map((snap: any, index: number) => ({
+                id: snap.id || generateId(),
+                name: snap.name || 'Unknown',
+                allocated: snap.allocated || 0,
+                spent: snap.spent || 0,
+                color: snap.color || '#3B82F6',
+                order: index,
+              }))
+            : [],
           salaryIncome: archive.salaryIncome || 0,
           createdDate: archive.archivedDate || new Date().toISOString(),
         };
         migratedMonths.push(monthData);
+        console.log('Migrated archived month:', monthData.month);
       });
     }
 
-    return {
+    // If no months were created, create an empty current month
+    if (migratedMonths.length === 0) {
+      console.log('No months found, creating empty current month');
+      const currentMonthStr = getCurrentMonthString();
+      migratedMonths.push({
+        id: generateId(),
+        month: currentMonthStr,
+        expenses: [],
+        reimbursements: [],
+        additionalIncome: [],
+        categories: [],
+        salaryIncome: oldBudget.salaryIncome || oldBudget.totalBudget || 0,
+        createdDate: new Date().toISOString(),
+      });
+    }
+
+    const migratedBudget: Budget = {
       salaryIncome: oldBudget.salaryIncome || oldBudget.totalBudget || 0,
       months: migratedMonths,
-      savings: oldBudget.savings || [],
-      longTermGoals: (oldBudget.longTermGoals || []).map((goal: any, index: number) => ({
-        ...goal,
-        order: goal.order !== undefined ? goal.order : index,
-      })),
+      savings: Array.isArray(oldBudget.savings) ? oldBudget.savings : [],
+      longTermGoals: Array.isArray(oldBudget.longTermGoals)
+        ? oldBudget.longTermGoals.map((goal: any, index: number) => ({
+            ...goal,
+            order: goal.order !== undefined ? goal.order : index,
+          }))
+        : [],
     };
+
+    console.log('Migration complete:', migratedBudget);
+    return migratedBudget;
   }
 
   /**

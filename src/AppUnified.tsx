@@ -80,10 +80,12 @@ function AppUnified() {
 
   // Set selected month to current month on load
   useEffect(() => {
-    if (!isLoading && budget.months.length > 0 && !selectedMonth) {
-      setSelectedMonth(getCurrentMonthString());
+    if (!isLoading && budget && Array.isArray(budget.months) && budget.months.length > 0 && !selectedMonth) {
+      const currentMonth = getCurrentMonthString();
+      console.log('Setting selected month to:', currentMonth);
+      setSelectedMonth(currentMonth);
     }
-  }, [isLoading, budget.months, selectedMonth, getCurrentMonthString]);
+  }, [isLoading, budget, selectedMonth, getCurrentMonthString]);
 
   // Auto-hide success message after 3 seconds
   useEffect(() => {
@@ -138,9 +140,27 @@ function AppUnified() {
     return (
       <div className="app">
         <div className="container">
-          <div className="error-message">
-            ⚠️ {error}
-            <button onClick={() => window.location.reload()}>Reload</button>
+          <div className="error-message" style={{ padding: '2rem', background: '#FEF3C7', borderRadius: '8px', marginTop: '2rem' }}>
+            <h2 style={{ color: '#92400E', marginBottom: '1rem' }}>⚠️ Error Loading Budget</h2>
+            <p style={{ color: '#92400E', marginBottom: '1rem' }}>{error}</p>
+            <p style={{ color: '#92400E', fontSize: '0.875rem', marginBottom: '1rem' }}>
+              Check the browser console (F12) for more details.
+            </p>
+            <button 
+              onClick={() => window.location.reload()}
+              style={{ 
+                padding: '0.75rem 1.5rem', 
+                background: '#3B82F6', 
+                color: 'white', 
+                border: 'none', 
+                borderRadius: '6px', 
+                cursor: 'pointer',
+                fontSize: '1rem',
+                fontWeight: '600'
+              }}
+            >
+              Reload Page
+            </button>
           </div>
         </div>
       </div>
