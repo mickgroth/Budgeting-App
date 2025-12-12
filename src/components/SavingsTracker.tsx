@@ -282,7 +282,7 @@ export const SavingsTracker: React.FC<SavingsTrackerProps> = ({
     <div className="savings-tracker">
       <div className="savings-header">
         <button className="btn-back" onClick={onBack}>
-          ← Back to Budget
+          ← Back
         </button>
         <h1>💰 Savings Tracker</h1>
         <p className="savings-description">

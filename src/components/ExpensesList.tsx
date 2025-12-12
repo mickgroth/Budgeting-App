@@ -10,6 +10,7 @@ interface ExpensesListProps {
   onDeleteExpense: (expenseId: string) => void;
   onUpdateReimbursement: (reimbursementId: string, updates: Partial<Omit<Reimbursement, 'id'>>) => void;
   onDeleteReimbursement: (reimbursementId: string) => void;
+  onBack: () => void;
 }
 
 type TransactionType = 'expense' | 'reimbursement';
@@ -26,6 +27,7 @@ export const ExpensesList: React.FC<ExpensesListProps> = ({
   onDeleteExpense,
   onUpdateReimbursement,
   onDeleteReimbursement,
+  onBack,
 }) => {
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all');
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>('all'); // 'all', 'expenses', 'reimbursements'
@@ -171,6 +173,9 @@ export const ExpensesList: React.FC<ExpensesListProps> = ({
 
   return (
     <div className="expenses-list">
+      <button className="btn-back" onClick={onBack} style={{ marginBottom: '1rem' }}>
+        ← Back
+      </button>
       <div className="expenses-header">
         <h3>Recent Transactions ({filteredTransactions.length})</h3>
         {filteredTransactions.length > 0 && (

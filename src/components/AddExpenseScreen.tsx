@@ -550,7 +550,7 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({
     <div className="add-expense-screen">
       <div className="screen-header">
         <button className="btn-back" onClick={onBack}>
-          ← Back to Budget
+          ← Back
         </button>
         <h1>Add Expense</h1>
       </div>

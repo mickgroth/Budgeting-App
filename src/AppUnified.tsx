@@ -236,22 +236,6 @@ function AppUnified() {
     return (
       <div className="app">
         <div className="container">
-          <button 
-            onClick={() => setCurrentView('month')}
-            style={{ 
-              marginBottom: '1rem',
-              padding: '0.5rem 1rem',
-              background: '#6B7280',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '0.9375rem',
-              fontWeight: '600'
-            }}
-          >
-            ← Back to Month View
-          </button>
           <ExpensesList
             expenses={monthData.expenses}
             reimbursements={monthData.reimbursements}
@@ -298,20 +282,6 @@ function AppUnified() {
     return (
       <div className="app">
         <div className="container">
-          <button 
-            onClick={() => setCurrentView('month')}
-            style={{ 
-              marginBottom: '1rem',
-              padding: '0.5rem 1rem',
-              background: '#6B7280',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer'
-            }}
-          >
-            ← Back to Month View
-          </button>
           <SavingsTracker
             savings={budget.savings}
             longTermGoals={budget.longTermGoals}
@@ -365,20 +335,6 @@ function AppUnified() {
     return (
       <div className="app">
         <div className="container">
-          <button 
-            onClick={() => setCurrentView('month')}
-            style={{ 
-              marginBottom: '1rem',
-              padding: '0.5rem 1rem',
-              background: '#6B7280',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer'
-            }}
-          >
-            ← Back to Month View
-          </button>
           <MonthlyComparison
             archives={archives}
             onBack={() => setCurrentView('month')}
