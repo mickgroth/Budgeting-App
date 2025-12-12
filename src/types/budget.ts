@@ -82,7 +82,23 @@ export interface CategorySnapshot {
 }
 
 /**
+ * Unified data structure for a single month (current or historic)
+ * All months use the same structure for consistency
+ */
+export interface MonthData {
+  id: string;
+  month: string; // Format: YYYY-MM
+  expenses: Expense[];
+  reimbursements: Reimbursement[];
+  additionalIncome: AdditionalIncome[];
+  categories: BudgetCategory[]; // Each month has its own category state
+  salaryIncome: number;
+  createdDate: string; // ISO date string when this month was created
+}
+
+/**
  * Archived expenses and budget data for a specific month
+ * @deprecated - Keeping for backward compatibility during migration
  */
 export interface MonthlyArchive {
   id: string;
@@ -98,18 +114,21 @@ export interface MonthlyArchive {
 }
 
 /**
- * Represents the overall budget state
+ * Represents the overall budget state (NEW UNIFIED STRUCTURE)
  */
 export interface Budget {
-  salaryIncome: number; // Fixed monthly salary income
-  additionalIncome: AdditionalIncome[]; // Current month's additional income entries
-  totalBudget: number; // Deprecated - kept for backward compatibility (will be calculated from salary + additional)
-  categories: BudgetCategory[];
-  expenses: Expense[]; // Current month's expenses only
-  reimbursements: Reimbursement[]; // Current month's reimbursements only
+  salaryIncome: number; // Fixed monthly salary income (applies to all months)
+  months: MonthData[]; // All months (current and historic) use same structure
   savings: MonthlySavings[];
   longTermGoals: LongTermSavingsGoal[];
-  monthlyArchives: MonthlyArchive[]; // Historic data
+  
+  // DEPRECATED FIELDS - kept for backward compatibility during migration
+  additionalIncome?: AdditionalIncome[];
+  totalBudget?: number;
+  categories?: BudgetCategory[];
+  expenses?: Expense[];
+  reimbursements?: Reimbursement[];
+  monthlyArchives?: MonthlyArchive[];
 }
 
 /**

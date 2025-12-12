@@ -4079,3 +4079,368 @@ button:active {
     width: 100%;
   }
 }
+
+/* ==========================================
+   UNIFIED UI - MONTH TABS & MONTH VIEW
+   ========================================== */
+
+/* Month Tabs Navigation */
+.month-tabs-container {
+  background: var(--color-card);
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  overflow-x: auto;
+}
+
+.month-tabs {
+  display: flex;
+  gap: 0.5rem;
+  min-width: min-content;
+}
+
+.month-tab {
+  padding: 0.75rem 1.5rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.month-tab:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.month-tab.active {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+  font-weight: 600;
+}
+
+.month-tab.current {
+  border-color: #10B981;
+  border-width: 2px;
+}
+
+.month-tab.current.active {
+  border-color: var(--color-primary);
+}
+
+.current-indicator {
+  color: #10B981;
+  font-size: 0.5rem;
+  line-height: 1;
+}
+
+.month-tab.active .current-indicator {
+  color: white;
+}
+
+/* Month View Container */
+.month-view {
+  background: var(--color-card);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-md);
+}
+
+.month-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.month-header h2 {
+  font-size: 1.75rem;
+  margin: 0;
+  color: var(--color-text);
+}
+
+.current-month-badge {
+  background: #10B981;
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Month Summary Grid */
+.month-summary {
+  margin-bottom: 2rem;
+}
+
+.month-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 968px) {
+  .month-summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .month-summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.summary-card {
+  background: var(--color-bg);
+  padding: 1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  transition: all 0.2s ease;
+}
+
+.summary-card.highlight {
+  border: 2px solid #3B82F6;
+  background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+}
+
+.summary-label {
+  font-size: 0.8125rem;
+  color: var(--color-text-light);
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.summary-value {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: 0.25rem;
+}
+
+.summary-value.spent {
+  color: var(--color-warning);
+}
+
+.summary-value.positive {
+  color: var(--color-success);
+}
+
+.summary-value.negative {
+  color: var(--color-danger);
+}
+
+.summary-percentage {
+  font-size: 0.8125rem;
+  color: var(--color-text-light);
+}
+
+.summary-note {
+  font-size: 0.75rem;
+  color: var(--color-text-light);
+  margin-top: 0.25rem;
+}
+
+/* Month Progress Bar */
+.month-progress-bar {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: var(--radius);
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text);
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.progress-track {
+  height: 20px;
+  background: #e2e8f0;
+  border-radius: 9999px;
+  overflow: hidden;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10B981 0%, #059669 100%);
+  border-radius: 9999px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.progress-fill.warning {
+  background: linear-gradient(90deg, #F59E0B 0%, #D97706 100%);
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+}
+
+.progress-fill.danger {
+  background: linear-gradient(90deg, #EF4444 0%, #DC2626 100%);
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+/* Month Actions */
+.month-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.month-actions button {
+  flex: 1;
+  min-width: 150px;
+}
+
+/* Categories Section in Month View */
+.month-view .categories-section {
+  margin-top: 2rem;
+}
+
+.month-view .section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.month-view .section-header h3 {
+  font-size: 1.25rem;
+  margin: 0;
+  color: var(--color-text);
+}
+
+.month-view .empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--color-text-light);
+  background: var(--color-bg);
+  border-radius: var(--radius);
+  border: 2px dashed var(--color-border);
+}
+
+.month-view .empty-state p {
+  margin: 0;
+  font-size: 0.9375rem;
+}
+
+/* Global Settings */
+.global-settings {
+  background: var(--color-card);
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.setting-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.setting-card label {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.salary-display {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  padding: 0.5rem 1rem;
+  background: var(--color-bg);
+  border-radius: var(--radius);
+  border: 2px solid var(--color-border);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.salary-display:hover {
+  border-color: var(--color-primary);
+  transform: translateY(-1px);
+}
+
+.salary-display .edit-hint {
+  font-size: 0.75rem;
+  color: var(--color-text-light);
+  margin-left: 0.5rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.salary-display:hover .edit-hint {
+  opacity: 1;
+}
+
+.inline-edit input {
+  font-size: 1.25rem;
+  font-weight: 700;
+  padding: 0.5rem 1rem;
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius);
+  color: var(--color-text);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+/* Main Actions */
+.main-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+  flex-wrap: wrap;
+}
+
+.btn-action {
+  flex: 1;
+  min-width: 200px;
+  padding: 1rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.savings-btn {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  color: white;
+}
+
+.savings-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.comparison-btn {
+  background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+  color: white;
+}
+
+.comparison-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
