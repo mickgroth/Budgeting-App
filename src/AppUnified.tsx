@@ -191,6 +191,11 @@ function AppUnified() {
 
   // Add Expense View
   if (currentView === 'add-expense') {
+    const handleCancel = () => {
+      console.log('Cancel clicked - returning to month view');
+      setCurrentView('month');
+    };
+
     return (
       <div className="app">
         <div className="container">
@@ -202,7 +207,7 @@ function AppUnified() {
               setShowSuccessMessage(true);
               setCurrentView('month');
             }}
-            onCancel={() => setCurrentView('month')}
+            onCancel={handleCancel}
           />
         </div>
       </div>
@@ -211,6 +216,11 @@ function AppUnified() {
 
   // Add Reimbursement View
   if (currentView === 'add-reimbursement') {
+    const handleCancel = () => {
+      console.log('Cancel clicked - returning to month view');
+      setCurrentView('month');
+    };
+
     return (
       <div className="app">
         <div className="container">
@@ -222,7 +232,7 @@ function AppUnified() {
               setShowSuccessMessage(true);
               setCurrentView('month');
             }}
-            onCancel={() => setCurrentView('month')}
+            onCancel={handleCancel}
           />
         </div>
       </div>
@@ -234,6 +244,22 @@ function AppUnified() {
     return (
       <div className="app">
         <div className="container">
+          <button 
+            onClick={() => setCurrentView('month')}
+            style={{ 
+              marginBottom: '1rem',
+              padding: '0.5rem 1rem',
+              background: '#6B7280',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '0.9375rem',
+              fontWeight: '600'
+            }}
+          >
+            ← Back to Month View
+          </button>
           <ExpensesList
             expenses={monthData.expenses}
             reimbursements={monthData.reimbursements}
@@ -254,19 +280,35 @@ function AppUnified() {
     return (
       <div className="app">
         <div className="container">
+          <button 
+            onClick={() => setCurrentView('month')}
+            style={{ 
+              marginBottom: '1rem',
+              padding: '0.5rem 1rem',
+              background: '#6B7280',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer'
+            }}
+          >
+            ← Back to Month View
+          </button>
           <SavingsTracker
             savings={budget.savings}
             longTermGoals={budget.longTermGoals}
             onSetSavingsGoal={setSavingsGoal}
             onCalculateActualSavings={calculateActualSavings}
             onDeleteSavings={(savingsId) => {
-              // Delete logic
+              // Implement delete savings if needed
+              console.log('Delete savings:', savingsId);
             }}
             onAddLongTermGoal={addLongTermGoal}
             onUpdateLongTermGoal={updateLongTermGoal}
             onDeleteLongTermGoal={deleteLongTermGoal}
             onReorderLongTermGoal={(goalId, direction) => {
-              // Reorder logic
+              // Implement reorder if needed
+              console.log('Reorder goal:', goalId, direction);
             }}
             onUpdateLongTermGoalProgress={(goalId, amount) => {
               const goal = budget.longTermGoals.find(g => g.id === goalId);
@@ -283,28 +325,45 @@ function AppUnified() {
 
   // Monthly Comparison View
   if (currentView === 'comparison') {
+    // Convert MonthData to MonthlyArchive format for compatibility
+    const archives = (budget.months || []).map(m => ({
+      id: m?.id || '',
+      month: m?.month || '',
+      expenses: m?.expenses || [],
+      reimbursements: m?.reimbursements || [],
+      additionalIncome: m?.additionalIncome || [],
+      categorySnapshots: (m?.categories || []).map(cat => ({
+        id: cat?.id || '',
+        name: cat?.name || '',
+        allocated: cat?.allocated || 0,
+        spent: cat?.spent || 0,
+        color: cat?.color || '#3B82F6',
+      })),
+      salaryIncome: m?.salaryIncome || 0,
+      totalBudget: (m?.salaryIncome || 0) + (m?.additionalIncome || []).reduce((sum, inc) => sum + inc.amount, 0),
+      totalSpent: (m?.categories || []).reduce((sum, cat) => sum + cat.spent, 0),
+      archivedDate: m?.createdDate || new Date().toISOString(),
+    }));
+
     return (
       <div className="app">
         <div className="container">
+          <button 
+            onClick={() => setCurrentView('month')}
+            style={{ 
+              marginBottom: '1rem',
+              padding: '0.5rem 1rem',
+              background: '#6B7280',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer'
+            }}
+          >
+            ← Back to Month View
+          </button>
           <MonthlyComparison
-            monthlyArchives={budget.months.map(m => ({
-              id: m.id,
-              month: m.month,
-              expenses: m.expenses,
-              reimbursements: m.reimbursements,
-              additionalIncome: m.additionalIncome,
-              categorySnapshots: m.categories.map(cat => ({
-                id: cat.id,
-                name: cat.name,
-                allocated: cat.allocated,
-                spent: cat.spent,
-                color: cat.color,
-              })),
-              salaryIncome: m.salaryIncome,
-              totalBudget: m.salaryIncome + m.additionalIncome.reduce((sum, inc) => sum + inc.amount, 0),
-              totalSpent: m.categories.reduce((sum, cat) => sum + cat.spent, 0),
-              archivedDate: m.createdDate,
-            }))}
+            monthlyArchives={archives}
             onBack={() => setCurrentView('month')}
           />
         </div>
@@ -369,6 +428,19 @@ function AppUnified() {
           </div>
         </div>
 
+        {/* Navigation Buttons (moved to top) */}
+        <div className="main-actions" style={{ marginBottom: '1.5rem' }}>
+          <button className="btn-action savings-btn" onClick={() => setCurrentView('savings')}>
+            💰 Savings Tracker
+          </button>
+          <button className="btn-action comparison-btn" onClick={() => setCurrentView('comparison')}>
+            📊 Monthly Comparison
+          </button>
+          <ImportBudgetExcel
+            onImport={(file) => importCategoriesToMonth(selectedMonth, file)}
+          />
+        </div>
+
         {/* Month Tabs */}
         <MonthTabs
           months={budget.months}
@@ -391,19 +463,6 @@ function AppUnified() {
           onViewExpensesList={() => setCurrentView('expenses-list')}
           currentMonthSavingsGoal={isCurrentMonth ? getCurrentMonthSavingsGoal() : 0}
         />
-
-        {/* Navigation Buttons */}
-        <div className="main-actions">
-          <button className="btn-action savings-btn" onClick={() => setCurrentView('savings')}>
-            💰 Savings Tracker
-          </button>
-          <button className="btn-action comparison-btn" onClick={() => setCurrentView('comparison')}>
-            📊 Monthly Comparison
-          </button>
-          <ImportBudgetExcel
-            onImport={(file) => importCategoriesToMonth(selectedMonth, file)}
-          />
-        </div>
 
         {/* Income Modal */}
         {showIncomeModal && (

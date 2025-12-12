@@ -373,26 +373,47 @@ export function useBudgetUnified(userId: string | null) {
    * Reorder category in a specific month
    */
   function reorderCategoryInMonth(monthStr: string, categoryId: string, direction: 'up' | 'down') {
+    console.log(`Reordering category ${categoryId} ${direction} in month ${monthStr}`);
+    
     setBudget(prev => ({
       ...prev,
       months: prev.months.map(month => {
         if (month.month !== monthStr) return month;
 
+        // Sort categories by current order
         const categories = [...month.categories].sort((a, b) => (a.order || 0) - (b.order || 0));
         const index = categories.findIndex(cat => cat.id === categoryId);
         
-        if (index === -1) return month;
-        if (direction === 'up' && index === 0) return month;
-        if (direction === 'down' && index === categories.length - 1) return month;
+        console.log('Current category order:', categories.map(c => c.name));
+        console.log(`Moving category at index ${index} (${categories[index]?.name}) ${direction}`);
+        
+        if (index === -1) {
+          console.log('Category not found');
+          return month;
+        }
+        if (direction === 'up' && index === 0) {
+          console.log('Already at top');
+          return month;
+        }
+        if (direction === 'down' && index === categories.length - 1) {
+          console.log('Already at bottom');
+          return month;
+        }
 
+        // Calculate target index based on direction
         const targetIndex = direction === 'up' ? index - 1 : index + 1;
+        console.log(`Swapping index ${index} with ${targetIndex}`);
+        
+        // Swap the two categories
         [categories[index], categories[targetIndex]] = [categories[targetIndex], categories[index]];
 
-        // Reassign order values
+        // Reassign order values based on new positions
         const reorderedCategories = categories.map((cat, idx) => ({
           ...cat,
           order: idx,
         }));
+        
+        console.log('New category order:', reorderedCategories.map(c => c.name));
 
         return {
           ...month,

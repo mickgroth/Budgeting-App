@@ -706,19 +706,25 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({
           </div>
 
           <div className="form-group">
-            <label htmlFor="isRecurring" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+            <label htmlFor="isRecurring" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', userSelect: 'none' }}>
               <input
                 id="isRecurring"
                 type="checkbox"
                 checked={isRecurring}
                 onChange={(e) => setIsRecurring(e.target.checked)}
                 disabled={isScanning}
-                style={{ cursor: 'pointer' }}
+                style={{ 
+                  cursor: 'pointer',
+                  width: '18px',
+                  height: '18px',
+                  accentColor: '#3B82F6',
+                  flexShrink: 0
+                }}
               />
-              <span>Mark as recurring expense</span>
+              <span style={{ cursor: 'pointer' }}>Mark as recurring expense</span>
             </label>
-            <small style={{ display: 'block', marginTop: '0.25rem', color: 'var(--color-text-light)', fontSize: '0.85rem' }}>
-              Recurring expenses will be automatically added to the new month when you click "End of Month"
+            <small style={{ display: 'block', marginTop: '0.25rem', marginLeft: '1.5rem', color: 'var(--color-text-light)', fontSize: '0.85rem' }}>
+              Recurring expenses will be automatically added to new months
             </small>
           </div>
 
