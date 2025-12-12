@@ -705,48 +705,50 @@ export const AddExpenseScreen: React.FC<AddExpenseScreenProps> = ({
             />
           </div>
 
-          <div className="form-group">
-            <label 
-              htmlFor="isRecurring" 
-              style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '0.75rem', 
-                cursor: 'pointer', 
-                userSelect: 'none',
-                position: 'relative',
-                zIndex: 1
-              }}
-              onClick={(e) => {
-                // Allow label click to toggle checkbox
-                if (!isScanning && e.target !== e.currentTarget.querySelector('input')) {
-                  setIsRecurring(!isRecurring);
-                }
-              }}
-            >
+          <div className="form-group" style={{ marginTop: '1rem' }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'flex-start', 
+              gap: '0.75rem',
+              padding: '0.75rem',
+              background: '#F9FAFB',
+              borderRadius: '8px',
+              border: '1px solid #E5E7EB'
+            }}>
               <input
                 id="isRecurring"
                 type="checkbox"
                 checked={isRecurring}
-                onChange={(e) => {
-                  e.stopPropagation();
-                  setIsRecurring(e.target.checked);
-                }}
+                onChange={(e) => setIsRecurring(e.target.checked)}
                 disabled={isScanning}
                 style={{ 
                   cursor: isScanning ? 'not-allowed' : 'pointer',
                   width: '20px',
                   height: '20px',
+                  minWidth: '20px',
+                  minHeight: '20px',
                   accentColor: '#3B82F6',
                   flexShrink: 0,
-                  margin: 0
+                  margin: 0,
+                  marginTop: '2px'
                 }}
               />
-              <span style={{ cursor: 'pointer' }}>Mark as recurring expense</span>
-            </label>
-            <small style={{ display: 'block', marginTop: '0.5rem', marginLeft: '0', color: 'var(--color-text-light)', fontSize: '0.85rem' }}>
-              Recurring expenses will be automatically added to new months
-            </small>
+              <label 
+                htmlFor="isRecurring"
+                style={{ 
+                  cursor: 'pointer', 
+                  userSelect: 'none',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.25rem'
+                }}
+              >
+                <span style={{ fontWeight: '500', color: '#1F2937' }}>Mark as recurring expense</span>
+                <span style={{ fontSize: '0.8125rem', color: '#6B7280' }}>
+                  Recurring expenses will be automatically added to new months
+                </span>
+              </label>
+            </div>
           </div>
 
           <div className="form-actions-horizontal">
