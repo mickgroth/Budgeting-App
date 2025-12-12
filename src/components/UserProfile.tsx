@@ -1,33 +1,43 @@
 import React, { useState } from 'react';
-import { AuthService } from '../services/authService';
 
 interface UserProfileProps {
-  userName: string | null;
-  userEmail: string | null;
+  user: {
+    uid: string;
+    displayName: string | null;
+    email: string | null;
+  };
+  onSignOut: () => void;
 }
 
 /**
  * User profile component with logout functionality
  */
-export const UserProfile: React.FC<UserProfileProps> = ({ userName, userEmail }) => {
+export const UserProfile: React.FC<UserProfileProps> = ({ user, onSignOut }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
     if (window.confirm('Are you sure you want to log out?')) {
-      setIsLoggingOut(true);
-      try {
-        await AuthService.signOut();
-        window.location.reload();
-      } catch (error) {
-        console.error('Error logging out:', error);
-        setIsLoggingOut(false);
-      }
+      onSignOut();
     }
   };
 
+  // Get initials from display name or email
+  const getInitials = () => {
+    if (user.displayName) {
+      const parts = user.displayName.split(' ');
+      if (parts.length >= 2) {
+        return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
+      }
+      return user.displayName.charAt(0).toUpperCase();
+    }
+    if (user.email) {
+      return user.email.charAt(0).toUpperCase();
+    }
+    return 'U';
+  };
+
   return (
-    <div className="user-profile">
+    <div className="user-profile" style={{ position: 'relative' }}>
       <button
         className="user-profile-button"
         onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -50,7 +60,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ userName, userEmail })
         onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.05)')}
         onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
       >
-        {userName?.charAt(0).toUpperCase() || 'U'}
+        {getInitials()}
       </button>
 
       {isMenuOpen && (
@@ -77,17 +87,20 @@ export const UserProfile: React.FC<UserProfileProps> = ({ userName, userEmail })
               borderRadius: '8px',
               boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
               padding: '1rem',
-              minWidth: '200px',
+              minWidth: '220px',
               zIndex: 1000,
             }}
           >
             <div style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #e2e8f0' }}>
-              <div style={{ fontWeight: '600', marginBottom: '0.25rem' }}>{userName}</div>
-              <div style={{ fontSize: '0.875rem', color: '#718096' }}>{userEmail}</div>
+              <div style={{ fontWeight: '600', marginBottom: '0.25rem', color: '#1F2937' }}>
+                {user.displayName || 'User'}
+              </div>
+              <div style={{ fontSize: '0.875rem', color: '#6B7280' }}>
+                {user.email}
+              </div>
             </div>
             <button
               onClick={handleLogout}
-              disabled={isLoggingOut}
               style={{
                 width: '100%',
                 padding: '0.5rem',
@@ -95,12 +108,12 @@ export const UserProfile: React.FC<UserProfileProps> = ({ userName, userEmail })
                 color: 'white',
                 border: 'none',
                 borderRadius: '4px',
-                cursor: isLoggingOut ? 'not-allowed' : 'pointer',
+                cursor: 'pointer',
                 fontWeight: '500',
-                opacity: isLoggingOut ? 0.6 : 1,
+                fontSize: '0.9375rem',
               }}
             >
-              {isLoggingOut ? 'Logging out...' : 'Log Out'}
+              Log Out
             </button>
           </div>
         </>

@@ -378,8 +378,8 @@ function AppUnified() {
     <div className="app">
       <div className="container">
         {/* Header with User Profile */}
-        <div className="app-header">
-          <h1>Budget Tracker</h1>
+        <div className="app-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <h1 style={{ margin: 0 }}>Budget Tracker</h1>
           <UserProfile user={currentUser} onSignOut={handleSignOut} />
         </div>
 
@@ -428,19 +428,6 @@ function AppUnified() {
           </div>
         </div>
 
-        {/* Navigation Buttons (moved to top) */}
-        <div className="main-actions" style={{ marginBottom: '1.5rem' }}>
-          <button className="btn-action savings-btn" onClick={() => setCurrentView('savings')}>
-            💰 Savings Tracker
-          </button>
-          <button className="btn-action comparison-btn" onClick={() => setCurrentView('comparison')}>
-            📊 Monthly Comparison
-          </button>
-          <ImportBudgetExcel
-            onImport={(file) => importCategoriesToMonth(selectedMonth, file)}
-          />
-        </div>
-
         {/* Month Tabs */}
         <MonthTabs
           months={budget.months}
@@ -461,6 +448,9 @@ function AppUnified() {
           onAddReimbursement={() => setCurrentView('add-reimbursement')}
           onAddIncome={() => setShowIncomeModal(true)}
           onViewExpensesList={() => setCurrentView('expenses-list')}
+          onViewSavings={() => setCurrentView('savings')}
+          onViewComparison={() => setCurrentView('comparison')}
+          onImportExcel={(file) => importCategoriesToMonth(selectedMonth, file)}
           currentMonthSavingsGoal={isCurrentMonth ? getCurrentMonthSavingsGoal() : 0}
         />
 

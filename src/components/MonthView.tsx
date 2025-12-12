@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { MonthData, BudgetCategory, Expense, Reimbursement, AdditionalIncome } from '../types/budget';
 import { CategoryCard } from './CategoryCard';
 import { AddCategoryForm } from './AddCategoryForm';
+import { ImportBudgetExcel } from './ImportBudgetExcel';
 import { formatCurrency, getTotalAllocated, getTotalSpent } from '../utils/budgetHelpers';
 
 interface MonthViewProps {
@@ -15,6 +16,9 @@ interface MonthViewProps {
   onAddReimbursement: () => void;
   onAddIncome: () => void;
   onViewExpensesList: () => void;
+  onViewSavings?: () => void;
+  onViewComparison?: () => void;
+  onImportExcel?: (file: File) => void;
   currentMonthSavingsGoal?: number;
 }
 
@@ -29,6 +33,9 @@ export const MonthView: React.FC<MonthViewProps> = ({
   onAddReimbursement,
   onAddIncome,
   onViewExpensesList,
+  onViewSavings,
+  onViewComparison,
+  onImportExcel,
   currentMonthSavingsGoal = 0,
 }) => {
   const [showAddCategory, setShowAddCategory] = useState(false);
@@ -132,6 +139,16 @@ export const MonthView: React.FC<MonthViewProps> = ({
         <button className="btn-secondary" onClick={onViewExpensesList}>
           📋 View All Transactions ({monthData.expenses.length + monthData.reimbursements.length})
         </button>
+        {onViewSavings && (
+          <button className="btn-secondary" onClick={onViewSavings}>
+            💰 Savings Tracker
+          </button>
+        )}
+        {onViewComparison && (
+          <button className="btn-secondary" onClick={onViewComparison}>
+            📊 Monthly Comparison
+          </button>
+        )}
       </div>
 
       {/* Categories Section */}
@@ -170,6 +187,13 @@ export const MonthView: React.FC<MonthViewProps> = ({
         {sortedCategories.length === 0 && (
           <div className="empty-state">
             <p>No categories yet. Add one to start tracking your expenses!</p>
+          </div>
+        )}
+
+        {/* Import Excel - at bottom of categories */}
+        {onImportExcel && (
+          <div style={{ marginTop: '1.5rem' }}>
+            <ImportBudgetExcel onImport={onImportExcel} />
           </div>
         )}
       </div>
