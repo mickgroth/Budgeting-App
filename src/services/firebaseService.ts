@@ -65,12 +65,27 @@ export class FirebaseService {
   static async saveBudget(userId: string, budget: Budget): Promise<void> {
     try {
       const docRef = doc(db, 'budgets', userId);
-      console.log('Saving budget to Firestore for user:', userId, {
-        categories: budget.categories.length,
-        expenses: budget.expenses.length,
-        savings: budget.savings.length,
-        longTermGoals: budget.longTermGoals.length
-      });
+      
+      // Log budget info - handle both old and new structure
+      const logInfo: any = {
+        salaryIncome: budget.salaryIncome,
+        savings: budget.savings?.length || 0,
+        longTermGoals: budget.longTermGoals?.length || 0,
+      };
+      
+      // New unified structure
+      if (budget.months && Array.isArray(budget.months)) {
+        logInfo.months = budget.months.length;
+        logInfo.structure = 'unified';
+      } 
+      // Old structure (for backward compatibility)
+      else if (budget.categories && budget.expenses) {
+        logInfo.categories = budget.categories.length;
+        logInfo.expenses = budget.expenses.length;
+        logInfo.structure = 'legacy';
+      }
+      
+      console.log('Saving budget to Firestore for user:', userId, logInfo);
       
       // Remove undefined values (Firestore doesn't allow them)
       const cleanedBudget = this.removeUndefined(budget);
