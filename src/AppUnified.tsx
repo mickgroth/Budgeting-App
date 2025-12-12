@@ -282,7 +282,8 @@ function AppUnified() {
         allocated: cat?.allocated || 0,
         spent: cat?.spent || 0,
         color: cat?.color || '#3B82F6',
-      })),
+        order: cat?.order || 0, // Include order for consistency
+      } as any)), // Cast to any to allow extra fields
       salaryIncome: m?.salaryIncome || 0,
       totalBudget: (m?.salaryIncome || 0) + (m?.additionalIncome || []).reduce((sum, inc) => sum + inc.amount, 0),
       totalSpent: (m?.categories || []).reduce((sum, cat) => sum + cat.spent, 0),
@@ -353,7 +354,8 @@ function AppUnified() {
         allocated: cat?.allocated || 0,
         spent: cat?.spent || 0,
         color: cat?.color || '#3B82F6',
-      })),
+        order: cat?.order || 0, // Include order for proper sorting
+      } as any)), // Cast to any to allow extra fields
       salaryIncome: m?.salaryIncome || 0,
       totalBudget: (m?.salaryIncome || 0) + (m?.additionalIncome || []).reduce((sum, inc) => sum + inc.amount, 0),
       totalSpent: (m?.categories || []).reduce((sum, cat) => sum + cat.spent, 0),

@@ -47,17 +47,27 @@ export const MonthlyComparison: React.FC<MonthlyComparisonProps> = ({
     setSelectedMonths([]);
   };
 
-  // Get all unique categories across selected months
-  const allCategories = new Map<string, { name: string; color: string }>();
+  // Get current month in YYYY-MM format
+  const currentMonth = (() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}`;
+  })();
+
+  // Get all unique categories across selected months with their order
+  const allCategories = new Map<string, { name: string; color: string; order: number }>();
   // Sort selected archives chronologically (oldest to newest) for display
   const selectedArchives = archives
     .filter(a => selectedMonths.includes(a.month))
     .sort((a, b) => a.month.localeCompare(b.month)); // Oldest first
   
   selectedArchives.forEach(archive => {
-    archive.categorySnapshots.forEach(cat => {
+    archive.categorySnapshots.forEach((cat, index) => {
       if (!allCategories.has(cat.id)) {
-        allCategories.set(cat.id, { name: cat.name, color: cat.color });
+        // Try to get order from category, fallback to index
+        const order = (cat as any).order !== undefined ? (cat as any).order : index;
+        allCategories.set(cat.id, { name: cat.name, color: cat.color, order });
       }
     });
   });
@@ -74,20 +84,36 @@ export const MonthlyComparison: React.FC<MonthlyComparisonProps> = ({
     });
 
     const total = monthlySpending.reduce((sum, m) => sum + m.spent, 0);
-    const average = monthlySpending.length > 0 ? total / monthlySpending.length : 0;
+    
+    // Calculate average, excluding current month if spent is 0
+    const monthsForAverage = monthlySpending.filter(m => {
+      // Exclude current month only if spent is 0
+      if (m.month === currentMonth && m.spent === 0) {
+        return false;
+      }
+      return true;
+    });
+    
+    const totalForAverage = monthsForAverage.reduce((sum, m) => sum + m.spent, 0);
+    const average = monthsForAverage.length > 0 ? totalForAverage / monthsForAverage.length : 0;
 
     return {
       id: catId,
       name: catInfo.name,
       color: catInfo.color,
+      order: catInfo.order,
       monthlySpending,
       total,
       average,
     };
   });
 
-  // Sort by total spending (highest first)
-  categoryData.sort((a, b) => b.total - a.total);
+  // Sort by user-defined order for chart view, or by total spending for table view
+  if (viewMode === 'chart') {
+    categoryData.sort((a, b) => (a.order || 0) - (b.order || 0));
+  } else {
+    categoryData.sort((a, b) => b.total - a.total);
+  }
 
   // Initialize selected categories with top 5 by default
   React.useEffect(() => {
